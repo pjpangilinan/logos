@@ -94,44 +94,16 @@ async function main() {
   const gamesById = new Map();
   let totalFetched = 0;
 
-  const queries = [
-    // 1. Upcoming / new releases (pages 1 to 3)
-    ...[1, 2, 3].map((page) => ({
-      name: `Upcoming/new games (page ${page}/3)`,
-      endpoint: '/games',
-      params: {
+  // 1. Upcoming / new releases (up to 3 pages)
+  for (let page = 1; page <= 3; page++) {
+    try {
+      console.log(`Fetching Upcoming/new games (page ${page}/3)...`);
+      const data = await fetchRawg('/games', {
         dates: getUpcomingDateRange(),
         ordering: '-added',
         page_size: 40,
         page,
-      },
-    })),
-    // 2. Top rated recent (page 1)
-    {
-      name: 'Top rated games (page 1)',
-      endpoint: '/games',
-      params: {
-        ordering: '-rating',
-        page_size: 40,
-        page: 1,
-      },
-    },
-    // 3. Popular games (page 1)
-    {
-      name: 'Popular games (page 1)',
-      endpoint: '/games',
-      params: {
-        ordering: '-relevance',
-        page_size: 40,
-        page: 1,
-      },
-    },
-  ];
-
-  for (const query of queries) {
-    try {
-      console.log(`Fetching ${query.name}...`);
-      const data = await fetchRawg(query.endpoint, query.params);
+      });
       const results = Array.isArray(data?.results) ? data.results : [];
       totalFetched += results.length;
       console.log(`  Received ${results.length} items.`);
@@ -142,10 +114,62 @@ async function main() {
           gamesById.set(normalized.id, normalized);
         }
       }
+
+      if (!data?.next || results.length < 40) {
+        break;
+      }
     } catch (err) {
-      console.error(`  Error during query "${query.name}":`, err.message);
+      if (err.message.includes('404')) {
+        console.log(`  No further pages available for upcoming games.`);
+        break;
+      }
+      console.error(`  Error during upcoming games fetch page ${page}:`, err.message);
       throw err;
     }
+  }
+
+  // 2. Top rated recent (page 1)
+  try {
+    console.log(`Fetching Top rated games (page 1)...`);
+    const data = await fetchRawg('/games', {
+      ordering: '-rating',
+      page_size: 40,
+      page: 1,
+    });
+    const results = Array.isArray(data?.results) ? data.results : [];
+    totalFetched += results.length;
+    console.log(`  Received ${results.length} items.`);
+    for (const game of results) {
+      const normalized = normalizeGame(game);
+      if (normalized) {
+        gamesById.set(normalized.id, normalized);
+      }
+    }
+  } catch (err) {
+    console.error(`  Error during top rated games fetch:`, err.message);
+    throw err;
+  }
+
+  // 3. Popular games (page 1)
+  try {
+    console.log(`Fetching Popular games (page 1)...`);
+    const data = await fetchRawg('/games', {
+      ordering: '-relevance',
+      page_size: 40,
+      page: 1,
+    });
+    const results = Array.isArray(data?.results) ? data.results : [];
+    totalFetched += results.length;
+    console.log(`  Received ${results.length} items.`);
+    for (const game of results) {
+      const normalized = normalizeGame(game);
+      if (normalized) {
+        gamesById.set(normalized.id, normalized);
+      }
+    }
+  } catch (err) {
+    console.error(`  Error during popular games fetch:`, err.message);
+    throw err;
   }
 
   const items = Array.from(gamesById.values());

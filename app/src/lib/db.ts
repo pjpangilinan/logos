@@ -41,15 +41,17 @@ export async function loadDb(): Promise<SqlJsDatabase> {
   if (loadingPromise) return loadingPromise;
 
   loadingPromise = (async () => {
+    const base = import.meta.env.BASE_URL || '/';
+    const cleanBase = base.endsWith('/') ? base : `${base}/`;
+
     const SQL = await initSqlJs({
       // sql.js will load the WASM binary from this path at runtime.
-      // Vite copies it to /public in dev and /dist in production.
-      locateFile: (file: string) => `/${file}`,
+      locateFile: (file: string) => `${cleanBase}${file}`,
     });
 
-    const response = await fetch('/aggregator.db');
+    const response = await fetch(`${cleanBase}aggregator.db`);
     if (!response.ok) {
-      throw new Error(`Failed to fetch aggregator.db: ${response.status}`);
+      throw new Error(`Failed to fetch aggregator.db: ${response.status} ${response.statusText}`);
     }
     const buffer = await response.arrayBuffer();
     db = new SQL.Database(new Uint8Array(buffer));

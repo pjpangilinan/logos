@@ -41,7 +41,7 @@ jobs:
 
       - name: Copy sql.js WASM to public
         working-directory: app
-        run: cp node_modules/sql.js/dist/sql-wasm.wasm public/sql-wasm.wasm
+        run: cp node_modules/sql.js/dist/*.wasm public/
 
       - name: Copy aggregator.db to public
         run: cp data/aggregator.db app/public/aggregator.db

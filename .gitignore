@@ -1,0 +1,33 @@
+# ===== Pre-existing files (ignored — not part of the project) =====
+AGENTS.md
+PLAN.md
+skills-lock.json
+.agents/
+
+# ===== Dependencies =====
+node_modules/
+
+# ===== Build output =====
+dist/
+.vite/
+
+# ===== Environment / secrets =====
+.env
+.env.*
+!.env.example
+
+# ===== OS files =====
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ===== IDE / editor =====
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===== SQLite journals (the .db itself is committed on purpose) =====
+*.db-journal
+*.db-wal
+*.db-shm

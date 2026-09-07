@@ -1,0 +1,18 @@
+{
+  "name": "logos-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Fetch scripts for Logos aggregator — one per data source",
+  "scripts": {
+    "seed": "node seed-db.js",
+    "fetch:tmdb": "node fetch-tmdb.js",
+    "fetch:rawg": "node fetch-rawg.js",
+    "fetch:rss": "node fetch-rss.js",
+    "fetch:all": "node fetch-tmdb.js && node fetch-rawg.js && node fetch-rss.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "rss-parser": "^3.13.0"
+  }
+}

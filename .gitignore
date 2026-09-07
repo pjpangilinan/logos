@@ -4,6 +4,10 @@ PLAN.md
 skills-lock.json
 .agents/
 
+# ===== Copied runtime assets (generated during build/deploy) =====
+app/public/sql-wasm.wasm
+app/public/aggregator.db
+
 # ===== Dependencies =====
 node_modules/
 

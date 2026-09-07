@@ -128,9 +128,9 @@ function normalizeMovie(item, movieGenres, tvGenres) {
 }
 
 /**
- * Normalize TMDB TV item to aggregator schema.
+ * Normalize TMDB TV item to aggregator schema with episode release dates.
  */
-function normalizeTv(item, movieGenres, tvGenres) {
+function normalizeTv(item, movieGenres, tvGenres, episodeDetail = null) {
   const poster = item.poster_path
     ? `${IMAGE_BASE_URL}${item.poster_path.startsWith('/') ? item.poster_path : `/${item.poster_path}`}`
     : null;
@@ -139,11 +139,32 @@ function normalizeTv(item, movieGenres, tvGenres) {
     .map((id) => tvGenres.get(id) || movieGenres.get(id))
     .filter(Boolean);
 
+  let releaseDate = item.first_air_date || null;
+  const showTitle = item.name || item.original_name || 'Untitled';
+  let displayTitle = showTitle;
+
+  if (episodeDetail?.next_episode_to_air) {
+    const nextEp = episodeDetail.next_episode_to_air;
+    releaseDate = nextEp.air_date || releaseDate;
+    const epCode = `S${String(nextEp.season_number).padStart(2, '0')}E${String(nextEp.episode_number).padStart(2, '0')}`;
+    tags.unshift(epCode, 'Next Episode');
+    if (nextEp.name && nextEp.name !== `Episode ${nextEp.episode_number}`) {
+      displayTitle = `${showTitle} (${epCode}: ${nextEp.name})`;
+    } else {
+      displayTitle = `${showTitle} (${epCode})`;
+    }
+  } else if (episodeDetail?.last_episode_to_air) {
+    const lastEp = episodeDetail.last_episode_to_air;
+    releaseDate = lastEp.air_date || releaseDate;
+    const epCode = `S${String(lastEp.season_number).padStart(2, '0')}E${String(lastEp.episode_number).padStart(2, '0')}`;
+    tags.unshift(epCode, 'New Episode');
+  }
+
   return {
     id: `tmdb:tv:${item.id}`,
     type: 'tv',
-    title: item.name || item.original_name || 'Untitled',
-    date: item.first_air_date || null,
+    title: displayTitle,
+    date: releaseDate,
     source: 'tmdb',
     url: `https://www.themoviedb.org/tv/${item.id}`,
     image: poster,
@@ -193,16 +214,16 @@ async function main() {
     throw err;
   }
 
-  // 3. TV: On The Air (pages 1-3)
+  // 3. TV Shows: Collect raw items from On The Air + Trending
   console.log('[TMDB] Fetching on-the-air TV shows (pages 1-3)...');
+  const rawTvShows = new Map();
+
   for (let page = 1; page <= 3; page++) {
     try {
       const data = await fetchJson('/tv/on_the_air', { page });
       const results = data?.results || [];
       for (const item of results) {
-        if (!item.id) continue;
-        const normalized = normalizeTv(item, movieGenres, tvGenres);
-        itemsMap.set(normalized.id, normalized);
+        if (item.id) rawTvShows.set(item.id, item);
       }
       console.log(`  - /tv/on_the_air page ${page}: got ${results.length} items`);
       if (data?.total_pages && page >= data.total_pages) break;
@@ -218,14 +239,33 @@ async function main() {
     const data = await fetchJson('/trending/tv/week', { page: 1 });
     const results = data?.results || [];
     for (const item of results) {
-      if (!item.id) continue;
-      const normalized = normalizeTv(item, movieGenres, tvGenres);
-      itemsMap.set(normalized.id, normalized);
+      if (item.id) rawTvShows.set(item.id, item);
     }
     console.log(`  - /trending/tv/week: got ${results.length} items`);
   } catch (err) {
     console.error(`  - Failed /trending/tv/week: ${err.message}`);
     throw err;
+  }
+
+  // 5. Enrich TV shows with next/last episode release dates
+  console.log(`[TMDB] Enriching ${rawTvShows.size} TV shows with episode air dates...`);
+  const tvArray = Array.from(rawTvShows.values());
+  const BATCH_SIZE = 6;
+
+  for (let i = 0; i < tvArray.length; i += BATCH_SIZE) {
+    const batch = tvArray.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (rawShow) => {
+        let episodeDetail = null;
+        try {
+          episodeDetail = await fetchJson(`/tv/${rawShow.id}`);
+        } catch (err) {
+          // If fetching episode details fails, fallback gracefully to basic show info
+        }
+        const normalized = normalizeTv(rawShow, movieGenres, tvGenres, episodeDetail);
+        itemsMap.set(normalized.id, normalized);
+      })
+    );
   }
 
   const items = Array.from(itemsMap.values());

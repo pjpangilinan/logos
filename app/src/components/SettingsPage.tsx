@@ -32,36 +32,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isAddingFeed, setIsAddingFeed] = useState(false);
   const [isSyncingFeeds, setIsSyncingFeeds] = useState(false);
 
-  const [hypeWeight, setHypeWeight] = useState(() => {
-    return Number(localStorage.getItem('logos_weight_hype') || 65);
-  });
-  const [genreWeight, setGenreWeight] = useState(() => {
-    return Number(localStorage.getItem('logos_weight_genre') || 80);
-  });
-  const [recencyWeight, setRecencyWeight] = useState(() => {
-    return Number(localStorage.getItem('logos_weight_recency') || 70);
-  });
-
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const showStatus = (msg: string) => {
     setStatusMessage(msg);
     setTimeout(() => setStatusMessage(null), 3000);
-  };
-
-  const handleSaveWeights = (hype: number, genre: number, recency: number) => {
-    setHypeWeight(hype);
-    setGenreWeight(genre);
-    setRecencyWeight(recency);
-    localStorage.setItem('logos_weight_hype', String(hype));
-    localStorage.setItem('logos_weight_genre', String(genre));
-    localStorage.setItem('logos_weight_recency', String(recency));
-    showStatus('Recommendation weights updated');
-  };
-
-  const handleResetDefaults = () => {
-    handleSaveWeights(65, 80, 70);
-    showStatus('Weights reset to defaults');
   };
 
   const handleVacuum = () => {
@@ -117,7 +92,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       preferences: localStorage.getItem('aggregator_preferences_v1') || '{}',
       watched: localStorage.getItem('logos_watched_ids') || '[]',
       customFeeds: localStorage.getItem('logos_custom_feeds_v1') || '[]',
-      weights: { hype: hypeWeight, genre: genreWeight, recency: recencyWeight },
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -144,9 +118,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         }
         if (data.customFeeds) {
           localStorage.setItem('logos_custom_feeds_v1', typeof data.customFeeds === 'string' ? data.customFeeds : JSON.stringify(data.customFeeds));
-        }
-        if (data.weights) {
-          handleSaveWeights(data.weights.hype, data.weights.genre, data.weights.recency);
         }
         showStatus('Preferences & feeds restored. Reloading...');
         setTimeout(() => window.location.reload(), 800);
@@ -363,109 +334,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
         </section>
 
-        {/* ─── SECTION 2: Recommendation Tuning & Dynamic Vector Weights ─ */}
-        <section className="w-full bg-dark-surface rounded-[22px] p-space-lg md:p-space-2xl flex flex-col gap-space-xl border border-dark-border/60 shadow-xl">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
-            <div className="flex flex-col gap-1">
-              <h2 className="font-headline-md text-headline-md text-on-primary tracking-tight">
-                Recommendation Tuning
-              </h2>
-            </div>
-            <button
-              onClick={handleResetDefaults}
-              className="inline-flex items-center gap-1 text-secondary-fixed-dim hover:text-on-primary font-label-code text-label-code uppercase tracking-wider transition-colors self-start md:self-auto"
-              type="button"
-            >
-              <span className="material-symbols-outlined text-[16px]">restart_alt</span>
-              <span>Reset All Defaults</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-lg">
-            {/* Slider 1: Hype Factor */}
-            <div className="bg-deep-dark p-space-lg rounded-2xl border border-dark-border/40 flex flex-col justify-between gap-space-md">
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="font-headline-sm text-[16px] text-on-primary">
-                    Hype & Popularity
-                  </span>
-                  <span className="font-label-code text-secondary-fixed-dim font-bold">
-                    {hypeWeight}%
-                  </span>
-                </div>
-                <p className="font-body-sm text-xs text-outline-variant mt-1">
-                  Balances general popularity bias vs niche tagged indie releases.
-                </p>
-              </div>
-              <input
-                type="range"
-                min="10"
-                max="100"
-                value={hypeWeight}
-                onChange={(e) =>
-                  handleSaveWeights(Number(e.target.value), genreWeight, recencyWeight)
-                }
-                className="w-full accent-secondary-container cursor-pointer"
-              />
-            </div>
-
-            {/* Slider 2: Genre Affinity */}
-            <div className="bg-deep-dark p-space-lg rounded-2xl border border-dark-border/40 flex flex-col justify-between gap-space-md">
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="font-headline-sm text-[16px] text-on-primary">
-                    Genre Affinity Match
-                  </span>
-                  <span className="font-label-code text-secondary-fixed-dim font-bold">
-                    {genreWeight}%
-                  </span>
-                </div>
-                <p className="font-body-sm text-xs text-outline-variant mt-1">
-                  Weight given to tag overlap with your saved and liked items.
-                </p>
-              </div>
-              <input
-                type="range"
-                min="10"
-                max="100"
-                value={genreWeight}
-                onChange={(e) =>
-                  handleSaveWeights(hypeWeight, Number(e.target.value), recencyWeight)
-                }
-                className="w-full accent-secondary-container cursor-pointer"
-              />
-            </div>
-
-            {/* Slider 3: Discovery Recency */}
-            <div className="bg-deep-dark p-space-lg rounded-2xl border border-dark-border/40 flex flex-col justify-between gap-space-md">
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="font-headline-sm text-[16px] text-on-primary">
-                    Discovery Recency Bias
-                  </span>
-                  <span className="font-label-code text-secondary-fixed-dim font-bold">
-                    {recencyWeight}%
-                  </span>
-                </div>
-                <p className="font-body-sm text-xs text-outline-variant mt-1">
-                  Surfaces items newly seen in aggregator.db over older catalog titles.
-                </p>
-              </div>
-              <input
-                type="range"
-                min="10"
-                max="100"
-                value={recencyWeight}
-                onChange={(e) =>
-                  handleSaveWeights(hypeWeight, genreWeight, Number(e.target.value))
-                }
-                className="w-full accent-secondary-container cursor-pointer"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* ─── SECTION 3: Custom RSS Subscriptions & Feed Manager ─────── */}
+        {/* ─── SECTION 2: Custom RSS Subscriptions & Feed Manager ─────── */}
         <section className="w-full bg-dark-surface rounded-[22px] p-space-lg md:p-space-2xl flex flex-col gap-space-lg border border-dark-border/60 shadow-xl">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
             <div className="flex flex-col gap-1">
@@ -635,7 +504,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           )}
         </section>
 
-        {/* ─── SECTION 4: Storage Management & Preferences Backup ─────── */}
+        {/* ─── SECTION 3: Storage Management & Preferences Backup ─────── */}
         <section className="w-full bg-dark-surface rounded-[22px] p-space-lg md:p-space-2xl flex flex-col gap-space-lg border border-dark-border/60 shadow-xl">
           <div className="flex flex-col gap-1">
             <span className="font-label-code text-label-code text-secondary-fixed-dim uppercase tracking-widest">

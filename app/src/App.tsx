@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { loadDb, getItems, getCountsByType, type Item } from './lib/db';
 import { usePreferences } from './lib/preferences';
-import { getRecommendations, type ScoredItem } from './lib/recommendations';
 import { Navbar, type PageId } from './components/Navbar';
 import { RadarPage } from './components/RadarPage';
 import { ExplorerPage } from './components/ExplorerPage';
@@ -69,11 +68,6 @@ function App() {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // Compute recommendations
-  const recommendations: ScoredItem[] = useMemo(() => {
-    return getRecommendations(allItems, preferences);
-  }, [allItems, preferences]);
 
   // Liked items array
   const likedItems = useMemo(() => {
@@ -184,7 +178,6 @@ function App() {
         {activePage === 'radar' && (
           <RadarPage
             items={activeItems}
-            recommendations={recommendations}
             counts={counts}
             isLiked={isLiked}
             toggleLike={toggleLike}

@@ -1,11 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import type { Item } from '../lib/db';
-import type { ScoredItem } from '../lib/recommendations';
 import { extractPlatformBadges } from '../lib/platforms';
 
 interface RadarPageProps {
   items: Item[];
-  recommendations: ScoredItem[];
   counts: Record<string, number>;
   isLiked: (id: string) => boolean;
   toggleLike: (item: Item) => void;
@@ -15,7 +13,6 @@ interface RadarPageProps {
 
 export const RadarPage: React.FC<RadarPageProps> = ({
   items,
-  recommendations,
   counts,
   isLiked,
   toggleLike,
@@ -63,18 +60,23 @@ export const RadarPage: React.FC<RadarPageProps> = ({
     return list.slice(0, 15);
   }, [filteredItems]);
 
-  // Curated hero recommendations slice (3 per view)
-  const curatedItems = useMemo(() => {
-    const pool = recommendations.length > 0 ? recommendations : items.slice(0, 9).map((it) => ({ item: it, score: 85 }));
+  // Popular & Trending hero items (3 per page)
+  const popularItems = useMemo(() => {
+    const pool = items.filter((it) => it.image && it.date);
+    const sorted = [...pool].sort((a, b) => {
+      const typeScore = (t: string) => (t === 'movie' || t === 'tv' || t === 'game' ? 2 : 1);
+      return typeScore(b.type) - typeScore(a.type);
+    });
+    const list = sorted.length > 0 ? sorted : items;
     const pageSize = 3;
-    const maxPage = Math.max(0, Math.ceil(pool.length / pageSize) - 1);
+    const maxPage = Math.max(0, Math.ceil(list.length / pageSize) - 1);
     const clampedPage = Math.min(recPage, maxPage);
     return {
-      displayed: pool.slice(clampedPage * pageSize, (clampedPage + 1) * pageSize),
+      displayed: list.slice(clampedPage * pageSize, (clampedPage + 1) * pageSize),
       maxPage,
       currentPage: clampedPage,
     };
-  }, [recommendations, items, recPage]);
+  }, [items, recPage]);
 
   // Format date helper
   const formatDateBadge = (dateStr: string | null) => {
@@ -115,62 +117,51 @@ export const RadarPage: React.FC<RadarPageProps> = ({
 
   return (
     <div className="w-full bg-dark-bg text-on-primary min-h-screen pb-space-4xl">
-      {/* ─── Hero Recommendations: Curated Pulse for You ────────────────── */}
+      {/* ─── Hero Showcase: Popular & Trending ─────────────────── */}
       <section className="w-full max-w-[1440px] mx-auto px-gutter pt-space-xl">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-space-lg gap-space-sm">
           <div>
             <h2 className="font-headline-lg text-headline-lg text-on-primary tracking-tight">
-              For You
+              Popular & Trending
             </h2>
             <p className="font-body-sm text-body-sm text-outline-variant mt-0.5">
-              Recommended releases based on your liked tags
+              Top trending and anticipated releases across movies, TV, and games
             </p>
           </div>
 
           <div className="flex items-center gap-1">
             <button
               onClick={() => setRecPage((p) => Math.max(0, p - 1))}
-              disabled={curatedItems.currentPage === 0}
+              disabled={popularItems.currentPage === 0}
               className="w-9 h-9 rounded-[10px] bg-dark-surface text-on-primary hover:bg-secondary-container transition-colors flex items-center justify-center disabled:opacity-30 disabled:hover:bg-dark-surface"
-              aria-label="Previous recommendations"
+              aria-label="Previous page"
             >
               <span className="material-symbols-outlined text-[18px]">chevron_left</span>
             </button>
             <button
-              onClick={() => setRecPage((p) => Math.min(curatedItems.maxPage, p + 1))}
-              disabled={curatedItems.currentPage >= curatedItems.maxPage}
+              onClick={() => setRecPage((p) => Math.min(popularItems.maxPage, p + 1))}
+              disabled={popularItems.currentPage >= popularItems.maxPage}
               className="w-9 h-9 rounded-[10px] bg-dark-surface text-on-primary hover:bg-secondary-container transition-colors flex items-center justify-center disabled:opacity-30 disabled:hover:bg-dark-surface"
-              aria-label="Next recommendations"
+              aria-label="Next page"
             >
               <span className="material-symbols-outlined text-[18px]">chevron_right</span>
             </button>
           </div>
         </div>
 
-        {/* 3-Column Prominent Hero Cards */}
+        {/* 3-Column Hero Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg relative">
-          {curatedItems.displayed.map(({ item, score }, index) => {
+          {popularItems.displayed.map((item) => {
             const liked = isLiked(item.id);
-            const matchPercentage = Math.min(99, Math.max(75, Math.round(score > 0 ? 80 + score * 3 : 88 - index * 4)));
             const platforms = extractPlatformBadges(item);
-            const glowGradients = [
-              'from-tertiary-fixed-dim/20 to-secondary-container/20',
-              'from-secondary-container/20 to-tertiary-container/20',
-              'from-tertiary-fixed-dim/20 to-tertiary-container/20',
-            ];
 
             return (
               <div key={item.id} className="relative group">
-                <div
-                  className={`absolute -inset-1 rounded-[26px] bg-gradient-to-r ${
-                    glowGradients[index % glowGradients.length]
-                  } blur-xl opacity-40 group-hover:opacity-100 transition duration-500`}
-                ></div>
-                <div className="relative rounded-[22px] bg-dark-surface p-space-lg flex flex-col justify-between h-full overflow-hidden border border-dark-border/60">
+                <div className="relative rounded-[22px] bg-dark-surface p-space-lg flex flex-col justify-between h-full overflow-hidden border border-dark-border/60 hover:border-dark-border transition-all">
                   <div className="flex items-center justify-between gap-space-sm z-10">
-                    <span className="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-secondary-container/20 text-secondary-fixed-dim font-label-code text-label-code">
+                    <span className="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-secondary-container/20 text-secondary-fixed-dim font-label-code text-label-code font-bold">
                       <span className="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
-                      {matchPercentage}% Match
+                      TRENDING
                     </span>
                     <span className="font-label-code text-label-code text-outline uppercase">
                       {item.type}
@@ -180,7 +171,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
                   <div className="relative w-full h-52 my-space-md rounded-[14px] overflow-hidden bg-deep-dark border border-dark-border/40">
                     {item.image ? (
                       <img
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                         src={item.image}
                         alt={item.title}
                         loading="lazy"
@@ -219,7 +210,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
                       {item.title}
                     </h3>
                     <p className="font-body-sm text-body-sm text-outline-variant line-clamp-2">
-                      {item.tags.length > 0 ? item.tags.join(' • ') : 'Indexed release entry from monitored source.'}
+                      {item.tags.length > 0 ? item.tags.join(' • ') : 'Catalog release entry.'}
                     </p>
                     <div className="pt-space-sm flex items-center justify-between border-t border-dark-border/40 mt-2">
                       <span className="font-label-code text-label-code text-outline">
@@ -233,7 +224,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
                             : 'bg-on-primary text-primary hover:bg-secondary-container hover:text-on-primary'
                         }`}
                       >
-                        {liked ? 'Saved' : 'Queue'}
+                        {liked ? 'Saved' : 'Track'}
                         <span className="material-symbols-outlined text-[16px]">
                           {liked ? 'bookmark_added' : 'bookmark_add'}
                         </span>

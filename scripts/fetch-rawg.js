@@ -174,7 +174,24 @@ async function main() {
     throw err;
   }
 
-  const items = Array.from(gamesById.values());
+  // Deduplicate items by normalized title + release year to catch duplicate RAWG entries (e.g. "Silent Hill Townfall" vs "Silent Hill: Townfall")
+  const titleMap = new Map();
+  for (const game of gamesById.values()) {
+    const cleanTitle = game.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const year = game.date ? game.date.slice(0, 4) : '';
+    const key = `${cleanTitle}:${year}`;
+    if (!titleMap.has(key)) {
+      titleMap.set(key, game);
+    } else {
+      const existing = titleMap.get(key);
+      // Prefer canonical title with punctuation or richer tags
+      if (game.title.includes(':') || game.tags.length > existing.tags.length) {
+        titleMap.set(key, game);
+      }
+    }
+  }
+
+  const items = Array.from(titleMap.values());
   console.log(
     `Fetched ${totalFetched} total results; ${items.length} unique games after deduplication.`
   );

@@ -77,6 +77,37 @@ function mapRow(row: Record<string, unknown>): Item {
   };
 }
 
+/**
+ * Deduplicate items by type, normalized title (alphanumeric only), and release year.
+ * Keeps the item with canonical punctuation or image/richer metadata.
+ */
+export function deduplicateItems(items: Item[]): Item[] {
+  const seen = new Map<string, Item>();
+
+  for (const item of items) {
+    const cleanTitle = (item.title || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+    const year = (item.date || '').slice(0, 4);
+    const key = `${item.type}:${cleanTitle}:${year}`;
+
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, item);
+      continue;
+    }
+
+    const existingPunct = (existing.title.match(/[^a-zA-Z0-9\s]/g) || []).length;
+    const currentPunct = (item.title.match(/[^a-zA-Z0-9\s]/g) || []).length;
+
+    if (currentPunct > existingPunct || (!existing.image && item.image)) {
+      seen.set(key, item);
+    }
+  }
+
+  return Array.from(seen.values());
+}
+
 /** Run a SELECT and return mapped Item[] */
 function query(sql: string, params: Record<string, unknown> = {}): Item[] {
   if (!db) throw new Error('Database not loaded. Call loadDb() first.');
@@ -88,7 +119,7 @@ function query(sql: string, params: Record<string, unknown> = {}): Item[] {
     results.push(mapRow(stmt.getAsObject()));
   }
   stmt.free();
-  return results;
+  return deduplicateItems(results);
 }
 
 // ─── Public query functions ─────────────────────────────────────────────────

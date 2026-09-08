@@ -68,7 +68,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
       return typeScore(b.type) - typeScore(a.type);
     });
     const list = sorted.length > 0 ? sorted : items;
-    const pageSize = 3;
+    const pageSize = 5;
     const maxPage = Math.max(0, Math.ceil(list.length / pageSize) - 1);
     const clampedPage = Math.min(recPage, maxPage);
     return {
@@ -117,129 +117,8 @@ export const RadarPage: React.FC<RadarPageProps> = ({
 
   return (
     <div className="w-full bg-dark-bg text-on-primary min-h-screen pb-space-4xl">
-      {/* ─── Hero Showcase: Popular & Trending ─────────────────── */}
-      <section className="w-full max-w-[1440px] mx-auto px-gutter pt-space-xl">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-space-lg gap-space-sm">
-          <div>
-            <h2 className="font-headline-lg text-headline-lg text-on-primary tracking-tight">
-              Popular & Trending
-            </h2>
-            <p className="font-body-sm text-body-sm text-outline-variant mt-0.5">
-              Top trending and anticipated releases across movies, TV, and games
-            </p>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setRecPage((p) => Math.max(0, p - 1))}
-              disabled={popularItems.currentPage === 0}
-              className="w-9 h-9 rounded-[10px] bg-dark-surface text-on-primary hover:bg-secondary-container transition-colors flex items-center justify-center disabled:opacity-30 disabled:hover:bg-dark-surface"
-              aria-label="Previous page"
-            >
-              <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-            </button>
-            <button
-              onClick={() => setRecPage((p) => Math.min(popularItems.maxPage, p + 1))}
-              disabled={popularItems.currentPage >= popularItems.maxPage}
-              className="w-9 h-9 rounded-[10px] bg-dark-surface text-on-primary hover:bg-secondary-container transition-colors flex items-center justify-center disabled:opacity-30 disabled:hover:bg-dark-surface"
-              aria-label="Next page"
-            >
-              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 3-Column Hero Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg relative">
-          {popularItems.displayed.map((item) => {
-            const liked = isLiked(item.id);
-            const platforms = extractPlatformBadges(item);
-
-            return (
-              <div key={item.id} className="relative group">
-                <div className="relative rounded-[22px] bg-dark-surface p-space-lg flex flex-col justify-between h-full overflow-hidden border border-dark-border/60 hover:border-dark-border transition-all">
-                  <div className="flex items-center justify-between gap-space-sm z-10">
-                    <span className="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-secondary-container/20 text-secondary-fixed-dim font-label-code text-label-code font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
-                      TRENDING
-                    </span>
-                    <span className="font-label-code text-label-code text-outline uppercase">
-                      {item.type}
-                    </span>
-                  </div>
-
-                  <div className="relative w-full h-52 my-space-md rounded-[14px] overflow-hidden bg-deep-dark border border-dark-border/40">
-                    {item.image ? (
-                      <img
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                        src={item.image}
-                        alt={item.title}
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-outline bg-gradient-to-br from-dark-surface to-deep-dark">
-                        <span className="material-symbols-outlined text-4xl opacity-30">radar</span>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-dark-surface via-transparent to-transparent"></div>
-                    <div className="absolute bottom-3 left-3 flex gap-1.5 flex-wrap">
-                      <span className="font-label-code text-label-code px-2 py-0.5 rounded-md bg-dark-bg/90 text-on-primary border border-dark-border/40">
-                        {item.source}
-                      </span>
-                      {platforms.map((p) => (
-                        <span
-                          key={p.name}
-                          className="font-label-code text-label-code px-2 py-0.5 rounded-md bg-secondary-container/30 text-secondary-fixed-dim border border-secondary-container/40 font-bold"
-                        >
-                          {p.name}
-                        </span>
-                      ))}
-                      {item.tags.filter((t) => !platforms.some((p) => p.name === t)).slice(0, Math.max(1, 2 - platforms.length)).map((tag) => (
-                        <span
-                          key={tag}
-                          className="font-label-code text-label-code px-2 py-0.5 rounded-md bg-dark-bg/70 text-outline-variant"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="z-10 flex flex-col gap-space-xs">
-                    <h3 className="font-headline-sm text-[20px] text-on-primary tracking-tight line-clamp-1">
-                      {item.title}
-                    </h3>
-                    <p className="font-body-sm text-body-sm text-outline-variant line-clamp-2">
-                      {item.tags.length > 0 ? item.tags.join(' • ') : 'Catalog release entry.'}
-                    </p>
-                    <div className="pt-space-sm flex items-center justify-between border-t border-dark-border/40 mt-2">
-                      <span className="font-label-code text-label-code text-outline">
-                        {formatCountdown(item.date)}
-                      </span>
-                      <button
-                        onClick={() => toggleLike(item)}
-                        className={`px-space-md py-1.5 rounded-[10px] font-label-caps text-label-caps tracking-wider uppercase transition-colors flex items-center gap-1.5 ${
-                          liked
-                            ? 'bg-secondary-container text-on-primary font-semibold'
-                            : 'bg-on-primary text-primary hover:bg-secondary-container hover:text-on-primary'
-                        }`}
-                      >
-                        {liked ? 'Saved' : 'Track'}
-                        <span className="material-symbols-outlined text-[16px]">
-                          {liked ? 'bookmark_added' : 'bookmark_add'}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
       {/* ─── Filter Control Bar ────────────────────────────────────────── */}
-      <section className="w-full max-w-[1440px] mx-auto px-gutter mt-space-2xl">
+      <section className="w-full max-w-[1440px] mx-auto px-gutter pt-space-lg">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md pb-space-md border-b border-dark-border/60">
           <div className="flex items-center gap-space-xs flex-wrap">
             <button
@@ -310,9 +189,11 @@ export const RadarPage: React.FC<RadarPageProps> = ({
         </div>
       </section>
 
-      {/* ─── Main Content: Split-Stream Feed ───────────────────────────── */}
+      {/* ─── Main Content: Split-Stream Feed + Side Rail ───────────────── */}
       <section className="w-full max-w-[1440px] mx-auto px-gutter mt-space-md">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-xl items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-space-xl items-start">
+          {/* Main 2-Column Split Stream (Left / Center, 8 cols on xl) */}
+          <div className="xl:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-space-lg items-start">
           {/* COLUMN 1: New Arrivals (Sorted by Discovery Time) */}
           <div className="flex flex-col gap-space-md">
             <div className="flex items-center justify-between pb-space-xs">
@@ -539,7 +420,133 @@ export const RadarPage: React.FC<RadarPageProps> = ({
             )}
           </div>
         </div>
-      </section>
-    </div>
-  );
+
+        {/* SIDE RAIL: Popular & Trending (Right Rail, 4 cols on xl) */}
+        <aside className="xl:col-span-4 xl:sticky xl:top-20 flex flex-col gap-space-md">
+          <div className="rounded-2xl bg-dark-surface p-space-md border border-dark-border/60 flex flex-col gap-space-md shadow-lg">
+            {/* Header with Title and Pagination */}
+            <div className="flex items-center justify-between pb-space-xs border-b border-dark-border/40">
+              <div className="flex items-center gap-space-xs">
+                <span className="material-symbols-outlined text-secondary-fixed-dim text-[18px]">
+                  trending_up
+                </span>
+                <h3 className="font-headline-sm text-sm text-on-primary tracking-tight font-semibold">
+                  Popular & Trending
+                </h3>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-label-code text-[11px] text-outline">
+                  {popularItems.currentPage + 1}/{popularItems.maxPage + 1}
+                </span>
+                <button
+                  onClick={() => setRecPage((p) => Math.max(0, p - 1))}
+                  disabled={popularItems.currentPage === 0}
+                  className="w-7 h-7 rounded-lg bg-dark-bg text-on-primary hover:bg-secondary-container transition-colors flex items-center justify-center disabled:opacity-30 disabled:hover:bg-dark-bg cursor-pointer"
+                  aria-label="Previous trending page"
+                >
+                  <span className="material-symbols-outlined text-[15px]">chevron_left</span>
+                </button>
+                <button
+                  onClick={() => setRecPage((p) => Math.min(popularItems.maxPage, p + 1))}
+                  disabled={popularItems.currentPage >= popularItems.maxPage}
+                  className="w-7 h-7 rounded-lg bg-dark-bg text-on-primary hover:bg-secondary-container transition-colors flex items-center justify-center disabled:opacity-30 disabled:hover:bg-dark-bg cursor-pointer"
+                  aria-label="Next trending page"
+                >
+                  <span className="material-symbols-outlined text-[15px]">chevron_right</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Compact Trending List */}
+            <div className="flex flex-col gap-2.5">
+              {popularItems.displayed.map((item, index) => {
+                const rank = popularItems.currentPage * 5 + index + 1;
+                const liked = isLiked(item.id);
+                const platforms = extractPlatformBadges(item);
+                const countdown = formatCountdown(item.date);
+
+                return (
+                  <div
+                    key={item.id}
+                    className="group rounded-xl bg-dark-bg/80 hover:bg-deep-dark p-2.5 border border-dark-border/40 hover:border-dark-border transition-all flex items-center gap-space-sm"
+                  >
+                    {/* Thumbnail with rank badge */}
+                    <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-dark-surface border border-dark-border/40">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-outline opacity-40">
+                          <span className="material-symbols-outlined text-[18px]">radar</span>
+                        </div>
+                      )}
+                      <span className="absolute top-0.5 left-0.5 min-w-4 h-4 px-1 rounded bg-black/80 backdrop-blur-xs text-[9px] font-label-code text-secondary-fixed-dim font-bold flex items-center justify-center">
+                        #{rank}
+                      </span>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex flex-col justify-center min-w-0 flex-grow">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-label-code text-[10px] text-secondary-fixed-dim uppercase truncate">
+                          {item.source} • {item.type}
+                        </span>
+                        <span className="font-label-code text-[10px] text-outline flex-shrink-0">
+                          {countdown}
+                        </span>
+                      </div>
+                      <a
+                        href={item.url || '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-headline-sm text-[13px] text-on-primary hover:text-secondary-fixed-dim transition-colors truncate block mt-0.5 font-medium"
+                      >
+                        {item.title}
+                      </a>
+                      <div className="flex items-center gap-1 mt-1 truncate">
+                        {platforms.slice(0, 2).map((p) => (
+                          <span
+                            key={p.name}
+                            className="font-label-code text-[9px] px-1.5 py-0.2 rounded bg-secondary-container/20 text-secondary-fixed-dim font-semibold"
+                          >
+                            {p.name}
+                          </span>
+                        ))}
+                        {platforms.length === 0 && item.tags[0] && (
+                          <span className="font-label-code text-[9px] text-outline-variant truncate">
+                            {item.tags[0]}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quick Bookmark */}
+                    <button
+                      onClick={() => toggleLike(item)}
+                      className={`p-1.5 rounded-lg transition-colors flex-shrink-0 cursor-pointer ${
+                        liked
+                          ? 'bg-secondary-container/20 text-secondary-fixed-dim border border-secondary-container/40'
+                          : 'bg-dark-surface text-outline-variant hover:text-on-primary border border-dark-border/40'
+                      }`}
+                      title={liked ? 'Saved' : 'Track'}
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">
+                        {liked ? 'bookmark_added' : 'bookmark'}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+);
 };

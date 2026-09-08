@@ -1,11 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import type { Item } from '../lib/db';
-import {
-  extractPlatformBadges,
-  matchesPlatformFilter,
-  KNOWN_STREAMING_PROVIDERS,
-  KNOWN_GAMING_PLATFORMS,
-} from '../lib/platforms';
 import { MonthlyCalendar } from './MonthlyCalendar';
 
 interface ExplorerPageProps {
@@ -37,7 +31,6 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [windowFilter, setWindowFilter] = useState<WindowFilter>('all');
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
 
   // Collect top genres from all items
@@ -67,12 +60,6 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
     );
   };
 
-  const togglePlatform = (platform: string) => {
-    setSelectedPlatforms((prev) =>
-      prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform]
-    );
-  };
-
   const toggleGenre = (genre: string) => {
     setSelectedGenres((prev) =>
       prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
@@ -84,7 +71,6 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
     setSortOption('release');
     setWindowFilter('all');
     setSelectedSources([]);
-    setSelectedPlatforms([]);
     setSelectedGenres([]);
     onSearchChange('');
   };
@@ -133,11 +119,6 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
           if (!matchesAny) return false;
         }
 
-        // Platform & Streaming filter
-        if (selectedPlatforms.length > 0) {
-          if (!matchesPlatformFilter(item, selectedPlatforms)) return false;
-        }
-
         // Genre filter
         if (selectedGenres.length > 0) {
           const hasGenre = selectedGenres.some((g) =>
@@ -162,7 +143,7 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
         const dateB = b.date || '0000-00-00';
         return dateB.localeCompare(dateA);
       });
-  }, [items, activeCategory, searchQuery, windowFilter, selectedSources, selectedPlatforms, selectedGenres, sortOption]);
+  }, [items, activeCategory, searchQuery, windowFilter, selectedSources, selectedGenres, sortOption]);
 
   const moviesCount = (counts['movie'] || 0) + (counts['tv'] || 0);
 
@@ -397,10 +378,10 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
 
               <div className="h-[1px] bg-dark-border w-full opacity-60"></div>
 
-              {/* Platform & Source filter */}
+              {/* Data Source filter */}
               <div className="flex flex-col gap-space-xs">
                 <span className="font-label-caps text-label-caps uppercase text-outline tracking-wider">
-                  Platform & Source
+                  Data Source
                 </span>
                 <div className="flex flex-col gap-1 pt-1">
                   {[
@@ -430,62 +411,6 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
                             check
                           </span>
                         )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="h-[1px] bg-dark-border w-full opacity-60"></div>
-
-              {/* Streaming Services */}
-              <div className="flex flex-col gap-space-xs">
-                <span className="font-label-caps text-label-caps uppercase text-outline tracking-wider">
-                  Streaming Availability
-                </span>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {KNOWN_STREAMING_PROVIDERS.slice(0, 6).map((provider) => {
-                    const active = selectedPlatforms.includes(provider);
-                    return (
-                      <button
-                        key={provider}
-                        onClick={() => togglePlatform(provider)}
-                        className={`px-2 py-0.5 rounded-md font-label-code text-[11px] transition-all ${
-                          active
-                            ? 'bg-secondary-container text-on-primary font-bold shadow-sm'
-                            : 'bg-deep-dark text-outline-variant hover:text-on-primary border border-dark-border/40'
-                        }`}
-                        type="button"
-                      >
-                        {provider}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="h-[1px] bg-dark-border w-full opacity-60"></div>
-
-              {/* Gaming Platforms */}
-              <div className="flex flex-col gap-space-xs">
-                <span className="font-label-caps text-label-caps uppercase text-outline tracking-wider">
-                  Gaming Platforms
-                </span>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {KNOWN_GAMING_PLATFORMS.slice(0, 6).map((platform) => {
-                    const active = selectedPlatforms.includes(platform);
-                    return (
-                      <button
-                        key={platform}
-                        onClick={() => togglePlatform(platform)}
-                        className={`px-2 py-0.5 rounded-md font-label-code text-[11px] transition-all ${
-                          active
-                            ? 'bg-secondary-container text-on-primary font-bold shadow-sm'
-                            : 'bg-deep-dark text-outline-variant hover:text-on-primary border border-dark-border/40'
-                        }`}
-                        type="button"
-                      >
-                        {platform}
                       </button>
                     );
                   })}
@@ -564,7 +489,6 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-space-lg">
                 {processedItems.map((item) => {
                   const liked = isLiked(item.id);
-                  const platforms = extractPlatformBadges(item);
                   return (
                     <div
                       key={item.id}
@@ -600,15 +524,7 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-1.5 flex-wrap text-outline font-label-caps uppercase text-[10px]">
                             <span className="text-secondary-fixed-dim font-bold">{item.type}</span>
-                            {platforms.map((p) => (
-                              <span
-                                key={p.name}
-                                className="px-1.5 py-0.2 rounded bg-secondary-container/20 text-secondary-fixed-dim font-label-code text-[9px] font-bold"
-                              >
-                                {p.name}
-                              </span>
-                            ))}
-                            {item.tags[0] && !platforms.some((p) => p.name === item.tags[0]) && (
+                            {item.tags[0] && (
                               <>
                                 <span>•</span>
                                 <span className="truncate">{item.tags[0]}</span>
@@ -646,16 +562,16 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
                           >
                             {liked ? 'bookmark_added' : 'bookmark_add'}
                           </span>
-                          <span>{liked ? 'Tracked' : 'Track'}</span>
+                          <span>{liked ? 'Saved' : 'Track'}</span>
                         </button>
 
                         <button
                           onClick={() => dismiss(item.id)}
-                          className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-dark-bg transition-colors"
-                          title="Hide from view"
+                          className="p-1.5 text-outline-variant hover:text-on-primary rounded-lg transition-colors"
+                          title="Hide from Explorer"
                           type="button"
                         >
-                          <span className="material-symbols-outlined text-[16px]">close</span>
+                          <span className="material-symbols-outlined text-[16px]">visibility_off</span>
                         </button>
                       </div>
                     </div>
@@ -669,7 +585,6 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
               <div className="flex flex-col gap-3 relative before:absolute before:left-6 before:top-4 before:bottom-4 before:w-[2px] before:bg-dark-border">
                 {processedItems.map((item) => {
                   const liked = isLiked(item.id);
-                  const platforms = extractPlatformBadges(item);
                   return (
                     <div
                       key={item.id}
@@ -691,14 +606,11 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
                             <span className="font-label-code text-[11px] text-secondary-fixed-dim uppercase">
                               {item.source} • {item.type}
                             </span>
-                            {platforms.map((p) => (
-                              <span
-                                key={p.name}
-                                className="px-1.5 py-0.2 rounded bg-secondary-container/20 text-secondary-fixed-dim font-label-code text-[9px] font-bold"
-                              >
-                                {p.name}
+                            {item.tags[0] && (
+                              <span className="font-label-code text-[10px] text-outline">
+                                • {item.tags[0]}
                               </span>
-                            ))}
+                            )}
                             <span className="text-outline text-xs">•</span>
                             <span className="font-label-code text-[11px] text-outline">
                               {item.date || 'TBA'}

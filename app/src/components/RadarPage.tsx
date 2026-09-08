@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import type { Item } from '../lib/db';
-import { extractPlatformBadges } from '../lib/platforms';
 
 interface RadarPageProps {
   items: Item[];
@@ -60,23 +59,25 @@ export const RadarPage: React.FC<RadarPageProps> = ({
     return list.slice(0, 15);
   }, [filteredItems]);
 
-  // Popular & Trending hero items (3 per page)
+  // Popular & Trending items: strictly top 10, reactive to category filter and search
   const popularItems = useMemo(() => {
-    const pool = items.filter((it) => it.image && it.date);
+    const pool = filteredItems.filter((it) => it.image && it.date);
     const sorted = [...pool].sort((a, b) => {
       const typeScore = (t: string) => (t === 'movie' || t === 'tv' || t === 'game' ? 2 : 1);
       return typeScore(b.type) - typeScore(a.type);
     });
-    const list = sorted.length > 0 ? sorted : items;
+    const candidateList = sorted.length > 0 ? sorted : filteredItems;
+    const top10 = candidateList.slice(0, 10);
     const pageSize = 5;
-    const maxPage = Math.max(0, Math.ceil(list.length / pageSize) - 1);
+    const maxPage = Math.max(0, Math.ceil(top10.length / pageSize) - 1);
     const clampedPage = Math.min(recPage, maxPage);
     return {
-      displayed: list.slice(clampedPage * pageSize, (clampedPage + 1) * pageSize),
+      displayed: top10.slice(clampedPage * pageSize, (clampedPage + 1) * pageSize),
       maxPage,
       currentPage: clampedPage,
+      totalCount: top10.length,
     };
-  }, [items, recPage]);
+  }, [filteredItems, recPage]);
 
   // Format date helper
   const formatDateBadge = (dateStr: string | null) => {
@@ -115,6 +116,11 @@ export const RadarPage: React.FC<RadarPageProps> = ({
     return `in ${months}mo`;
   };
 
+  const handleFilterChange = (filter: 'all' | 'movie' | 'tv' | 'game' | 'news') => {
+    setSelectedFilter(filter);
+    setRecPage(0);
+  };
+
   return (
     <div className="w-full bg-dark-bg text-on-primary min-h-screen pb-space-4xl">
       {/* ─── Filter Control Bar ────────────────────────────────────────── */}
@@ -122,7 +128,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md pb-space-md border-b border-dark-border/60">
           <div className="flex items-center gap-space-xs flex-wrap">
             <button
-              onClick={() => setSelectedFilter('all')}
+              onClick={() => handleFilterChange('all')}
               className={`px-space-md py-2 rounded-full font-label-code text-label-code transition-all ${
                 selectedFilter === 'all'
                   ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
@@ -132,7 +138,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
               All <span className="opacity-75 ml-1">({items.length})</span>
             </button>
             <button
-              onClick={() => setSelectedFilter('movie')}
+              onClick={() => handleFilterChange('movie')}
               className={`px-space-md py-2 rounded-full font-label-code text-label-code transition-all ${
                 selectedFilter === 'movie'
                   ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
@@ -142,7 +148,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
               Movies <span className="opacity-60 ml-1">({counts['movie'] || 0})</span>
             </button>
             <button
-              onClick={() => setSelectedFilter('tv')}
+              onClick={() => handleFilterChange('tv')}
               className={`px-space-md py-2 rounded-full font-label-code text-label-code transition-all ${
                 selectedFilter === 'tv'
                   ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
@@ -152,7 +158,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
               TV Series <span className="opacity-60 ml-1">({counts['tv'] || 0})</span>
             </button>
             <button
-              onClick={() => setSelectedFilter('game')}
+              onClick={() => handleFilterChange('game')}
               className={`px-space-md py-2 rounded-full font-label-code text-label-code transition-all ${
                 selectedFilter === 'game'
                   ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
@@ -162,7 +168,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
               Games <span className="opacity-60 ml-1">({counts['game'] || 0})</span>
             </button>
             <button
-              onClick={() => setSelectedFilter('news')}
+              onClick={() => handleFilterChange('news')}
               className={`px-space-md py-2 rounded-full font-label-code text-label-code transition-all ${
                 selectedFilter === 'news'
                   ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
@@ -215,7 +221,6 @@ export const RadarPage: React.FC<RadarPageProps> = ({
             ) : (
               newArrivals.map((item) => {
                 const liked = isLiked(item.id);
-                const platforms = extractPlatformBadges(item);
                 return (
                   <div
                     key={item.id}
@@ -259,14 +264,14 @@ export const RadarPage: React.FC<RadarPageProps> = ({
                         {item.tags.join(' • ') || item.title}
                       </p>
 
-                      {platforms.length > 0 && (
+                      {item.tags.length > 0 && (
                         <div className="flex gap-1 flex-wrap mt-1">
-                          {platforms.map((p) => (
+                          {item.tags.slice(0, 2).map((tag) => (
                             <span
-                              key={p.name}
-                              className="px-1.5 py-0.2 rounded bg-secondary-container/20 text-secondary-fixed-dim font-label-code text-[9px] font-bold"
+                              key={tag}
+                              className="px-1.5 py-0.2 rounded bg-deep-dark text-outline-variant font-label-code text-[9px]"
                             >
-                              {p.name}
+                              {tag}
                             </span>
                           ))}
                         </div>
@@ -329,7 +334,6 @@ export const RadarPage: React.FC<RadarPageProps> = ({
               upcomingRadar.map((item) => {
                 const dateBadge = formatDateBadge(item.date);
                 const liked = isLiked(item.id);
-                const platforms = extractPlatformBadges(item);
                 const countdown = formatCountdown(item.date);
                 const isImminent = countdown === 'Today' || countdown === 'Tomorrow';
 
@@ -370,14 +374,14 @@ export const RadarPage: React.FC<RadarPageProps> = ({
                         >
                           {item.title}
                         </a>
-                        {platforms.length > 0 && (
+                        {item.tags.length > 0 && (
                           <div className="flex gap-1 flex-wrap mt-1">
-                            {platforms.map((p) => (
+                            {item.tags.slice(0, 2).map((tag) => (
                               <span
-                                key={p.name}
-                                className="px-1.5 py-0.2 rounded bg-secondary-container/20 text-secondary-fixed-dim font-label-code text-[9px] font-bold"
+                                key={tag}
+                                className="px-1.5 py-0.2 rounded bg-deep-dark text-outline-variant font-label-code text-[9px]"
                               >
-                                {p.name}
+                                {tag}
                               </span>
                             ))}
                           </div>
@@ -435,113 +439,114 @@ export const RadarPage: React.FC<RadarPageProps> = ({
                 </h3>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="font-label-code text-[11px] text-outline">
-                  {popularItems.currentPage + 1}/{popularItems.maxPage + 1}
-                </span>
-                <button
-                  onClick={() => setRecPage((p) => Math.max(0, p - 1))}
-                  disabled={popularItems.currentPage === 0}
-                  className="w-7 h-7 rounded-lg bg-dark-bg text-on-primary hover:bg-secondary-container transition-colors flex items-center justify-center disabled:opacity-30 disabled:hover:bg-dark-bg cursor-pointer"
-                  aria-label="Previous trending page"
-                >
-                  <span className="material-symbols-outlined text-[15px]">chevron_left</span>
-                </button>
-                <button
-                  onClick={() => setRecPage((p) => Math.min(popularItems.maxPage, p + 1))}
-                  disabled={popularItems.currentPage >= popularItems.maxPage}
-                  className="w-7 h-7 rounded-lg bg-dark-bg text-on-primary hover:bg-secondary-container transition-colors flex items-center justify-center disabled:opacity-30 disabled:hover:bg-dark-bg cursor-pointer"
-                  aria-label="Next trending page"
-                >
-                  <span className="material-symbols-outlined text-[15px]">chevron_right</span>
-                </button>
+                {popularItems.totalCount > 5 && (
+                  <>
+                    <span className="font-label-code text-[11px] text-outline">
+                      {popularItems.currentPage + 1}/{popularItems.maxPage + 1}
+                    </span>
+                    <button
+                      onClick={() => setRecPage((p) => Math.max(0, p - 1))}
+                      disabled={popularItems.currentPage === 0}
+                      className="w-7 h-7 rounded-lg bg-dark-bg text-on-primary hover:bg-secondary-container transition-colors flex items-center justify-center disabled:opacity-30 disabled:hover:bg-dark-bg cursor-pointer"
+                      aria-label="Previous trending page"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">chevron_left</span>
+                    </button>
+                    <button
+                      onClick={() => setRecPage((p) => Math.min(popularItems.maxPage, p + 1))}
+                      disabled={popularItems.currentPage >= popularItems.maxPage}
+                      className="w-7 h-7 rounded-lg bg-dark-bg text-on-primary hover:bg-secondary-container transition-colors flex items-center justify-center disabled:opacity-30 disabled:hover:bg-dark-bg cursor-pointer"
+                      aria-label="Next trending page"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">chevron_right</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
             {/* Compact Trending List */}
             <div className="flex flex-col gap-2.5">
-              {popularItems.displayed.map((item, index) => {
-                const rank = popularItems.currentPage * 5 + index + 1;
-                const liked = isLiked(item.id);
-                const platforms = extractPlatformBadges(item);
-                const countdown = formatCountdown(item.date);
+              {popularItems.displayed.length === 0 ? (
+                <div className="p-space-md text-center text-outline text-xs rounded-xl bg-dark-bg/60 border border-dark-border/40">
+                  No popular items match this category.
+                </div>
+              ) : (
+                popularItems.displayed.map((item, index) => {
+                  const rank = popularItems.currentPage * 5 + index + 1;
+                  const liked = isLiked(item.id);
+                  const countdown = formatCountdown(item.date);
 
-                return (
-                  <div
-                    key={item.id}
-                    className="group rounded-xl bg-dark-bg/80 hover:bg-deep-dark p-2.5 border border-dark-border/40 hover:border-dark-border transition-all flex items-center gap-space-sm"
-                  >
-                    {/* Thumbnail with rank badge */}
-                    <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-dark-surface border border-dark-border/40">
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-outline opacity-40">
-                          <span className="material-symbols-outlined text-[18px]">radar</span>
-                        </div>
-                      )}
-                      <span className="absolute top-0.5 left-0.5 min-w-4 h-4 px-1 rounded bg-black/80 backdrop-blur-xs text-[9px] font-label-code text-secondary-fixed-dim font-bold flex items-center justify-center">
-                        #{rank}
-                      </span>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex flex-col justify-center min-w-0 flex-grow">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="font-label-code text-[10px] text-secondary-fixed-dim uppercase truncate">
-                          {item.source} • {item.type}
-                        </span>
-                        <span className="font-label-code text-[10px] text-outline flex-shrink-0">
-                          {countdown}
+                  return (
+                    <div
+                      key={item.id}
+                      className="group rounded-xl bg-dark-bg/80 hover:bg-deep-dark p-2.5 border border-dark-border/40 hover:border-dark-border transition-all flex items-center gap-space-sm"
+                    >
+                      {/* Thumbnail with rank badge */}
+                      <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-dark-surface border border-dark-border/40">
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-outline opacity-40">
+                            <span className="material-symbols-outlined text-[18px]">radar</span>
+                          </div>
+                        )}
+                        <span className="absolute top-0.5 left-0.5 min-w-4 h-4 px-1 rounded bg-black/80 backdrop-blur-xs text-[9px] font-label-code text-secondary-fixed-dim font-bold flex items-center justify-center">
+                          #{rank}
                         </span>
                       </div>
-                      <a
-                        href={item.url || '#'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-headline-sm text-[13px] text-on-primary hover:text-secondary-fixed-dim transition-colors truncate block mt-0.5 font-medium"
-                      >
-                        {item.title}
-                      </a>
-                      <div className="flex items-center gap-1 mt-1 truncate">
-                        {platforms.slice(0, 2).map((p) => (
-                          <span
-                            key={p.name}
-                            className="font-label-code text-[9px] px-1.5 py-0.2 rounded bg-secondary-container/20 text-secondary-fixed-dim font-semibold"
-                          >
-                            {p.name}
+
+                      {/* Content */}
+                      <div className="flex flex-col justify-center min-w-0 flex-grow">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-label-code text-[10px] text-secondary-fixed-dim uppercase truncate">
+                            {item.source} • {item.type}
                           </span>
-                        ))}
-                        {platforms.length === 0 && item.tags[0] && (
-                          <span className="font-label-code text-[9px] text-outline-variant truncate">
-                            {item.tags[0]}
+                          <span className="font-label-code text-[10px] text-outline flex-shrink-0">
+                            {countdown}
                           </span>
+                        </div>
+                        <a
+                          href={item.url || '#'}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-headline-sm text-[13px] text-on-primary hover:text-secondary-fixed-dim transition-colors truncate block mt-0.5 font-medium"
+                        >
+                          {item.title}
+                        </a>
+                        {item.tags.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1 truncate">
+                            <span className="font-label-code text-[9px] text-outline-variant truncate">
+                              {item.tags[0]}
+                            </span>
+                          </div>
                         )}
                       </div>
-                    </div>
 
-                    {/* Quick Bookmark */}
-                    <button
-                      onClick={() => toggleLike(item)}
-                      className={`p-1.5 rounded-lg transition-colors flex-shrink-0 cursor-pointer ${
-                        liked
-                          ? 'bg-secondary-container/20 text-secondary-fixed-dim border border-secondary-container/40'
-                          : 'bg-dark-surface text-outline-variant hover:text-on-primary border border-dark-border/40'
-                      }`}
-                      title={liked ? 'Saved' : 'Track'}
-                      type="button"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">
-                        {liked ? 'bookmark_added' : 'bookmark'}
-                      </span>
-                    </button>
-                  </div>
-                );
-              })}
+                      {/* Quick Bookmark */}
+                      <button
+                        onClick={() => toggleLike(item)}
+                        className={`p-1.5 rounded-lg transition-colors flex-shrink-0 cursor-pointer ${
+                          liked
+                            ? 'bg-secondary-container/20 text-secondary-fixed-dim border border-secondary-container/40'
+                            : 'bg-dark-surface text-outline-variant hover:text-on-primary border border-dark-border/40'
+                        }`}
+                        title={liked ? 'Saved' : 'Track'}
+                        type="button"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {liked ? 'bookmark_added' : 'bookmark'}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </aside>

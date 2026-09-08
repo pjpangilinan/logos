@@ -6,7 +6,6 @@ import {
   formatMonthHeader,
   formatLocalDate,
 } from '../lib/calendar';
-import { extractPlatformBadges } from '../lib/platforms';
 
 interface MonthlyCalendarProps {
   items: Item[];
@@ -246,7 +245,6 @@ export const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md">
             {selectedDayItems.map((item) => {
               const liked = isLiked(item.id);
-              const platforms = extractPlatformBadges(item);
 
               return (
                 <div
@@ -285,14 +283,14 @@ export const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                         {item.title}
                       </a>
 
-                      {platforms.length > 0 && (
+                      {item.tags.length > 0 && (
                         <div className="flex gap-1 flex-wrap mt-1">
-                          {platforms.map((p) => (
+                          {item.tags.slice(0, 2).map((tag) => (
                             <span
-                              key={p.name}
+                              key={tag}
                               className="px-1.5 py-0.2 rounded bg-secondary-container/20 text-secondary-fixed-dim font-label-code text-[9px] font-bold"
                             >
-                              {p.name}
+                              {tag}
                             </span>
                           ))}
                         </div>

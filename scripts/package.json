@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Fetch scripts for Logos aggregator — one per data source",
   "scripts": {
+    "test": "node --test tests/**/*.test.js",
     "seed": "node seed-db.js",
     "fetch:tmdb": "node fetch-tmdb.js",
     "fetch:rawg": "node fetch-rawg.js",

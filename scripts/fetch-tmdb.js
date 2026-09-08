@@ -103,74 +103,8 @@ async function fetchGenreMaps() {
   return { movieGenres, tvGenres };
 }
 
-/**
- * Normalize TMDB movie item to aggregator schema.
- */
-function normalizeMovie(item, movieGenres, tvGenres) {
-  const poster = item.poster_path
-    ? `${IMAGE_BASE_URL}${item.poster_path.startsWith('/') ? item.poster_path : `/${item.poster_path}`}`
-    : null;
+import { normalizeMovie, normalizeTv } from './lib/normalization-helpers.js';
 
-  const tags = (item.genre_ids || [])
-    .map((id) => movieGenres.get(id) || tvGenres.get(id))
-    .filter(Boolean);
-
-  return {
-    id: `tmdb:movie:${item.id}`,
-    type: 'movie',
-    title: item.title || item.original_title || 'Untitled',
-    date: item.release_date || null,
-    source: 'tmdb',
-    url: `https://www.themoviedb.org/movie/${item.id}`,
-    image: poster,
-    tags: [...new Set(tags)],
-  };
-}
-
-/**
- * Normalize TMDB TV item to aggregator schema with episode release dates.
- */
-function normalizeTv(item, movieGenres, tvGenres, episodeDetail = null) {
-  const poster = item.poster_path
-    ? `${IMAGE_BASE_URL}${item.poster_path.startsWith('/') ? item.poster_path : `/${item.poster_path}`}`
-    : null;
-
-  const tags = (item.genre_ids || [])
-    .map((id) => tvGenres.get(id) || movieGenres.get(id))
-    .filter(Boolean);
-
-  let releaseDate = item.first_air_date || null;
-  const showTitle = item.name || item.original_name || 'Untitled';
-  let displayTitle = showTitle;
-
-  if (episodeDetail?.next_episode_to_air) {
-    const nextEp = episodeDetail.next_episode_to_air;
-    releaseDate = nextEp.air_date || releaseDate;
-    const epCode = `S${String(nextEp.season_number).padStart(2, '0')}E${String(nextEp.episode_number).padStart(2, '0')}`;
-    tags.unshift(epCode, 'Next Episode');
-    if (nextEp.name && nextEp.name !== `Episode ${nextEp.episode_number}`) {
-      displayTitle = `${showTitle} (${epCode}: ${nextEp.name})`;
-    } else {
-      displayTitle = `${showTitle} (${epCode})`;
-    }
-  } else if (episodeDetail?.last_episode_to_air) {
-    const lastEp = episodeDetail.last_episode_to_air;
-    releaseDate = lastEp.air_date || releaseDate;
-    const epCode = `S${String(lastEp.season_number).padStart(2, '0')}E${String(lastEp.episode_number).padStart(2, '0')}`;
-    tags.unshift(epCode, 'New Episode');
-  }
-
-  return {
-    id: `tmdb:tv:${item.id}`,
-    type: 'tv',
-    title: displayTitle,
-    date: releaseDate,
-    source: 'tmdb',
-    url: `https://www.themoviedb.org/tv/${item.id}`,
-    image: poster,
-    tags: [...new Set(tags)],
-  };
-}
 
 async function main() {
   console.log('[TMDB] Starting TMDB fetch job...');
@@ -247,10 +181,10 @@ async function main() {
     throw err;
   }
 
-  // 5. Enrich TV shows with next/last episode release dates
-  console.log(`[TMDB] Enriching ${rawTvShows.size} TV shows with episode air dates...`);
+  // 5. Enrich TV shows with next/last episode release dates and watch providers
+  console.log(`[TMDB] Enriching ${rawTvShows.size} TV shows with air dates & streaming providers...`);
   const tvArray = Array.from(rawTvShows.values());
-  const BATCH_SIZE = 6;
+  const BATCH_SIZE = 4;
 
   for (let i = 0; i < tvArray.length; i += BATCH_SIZE) {
     const batch = tvArray.slice(i, i + BATCH_SIZE);
@@ -258,14 +192,24 @@ async function main() {
       batch.map(async (rawShow) => {
         let episodeDetail = null;
         try {
-          episodeDetail = await fetchJson(`/tv/${rawShow.id}`);
-        } catch (err) {
-          // If fetching episode details fails, fallback gracefully to basic show info
+          episodeDetail = await fetchJson(`/tv/${rawShow.id}`, { append_to_response: 'watch/providers' });
+        } catch {
+          // Fallback gracefully to basic show info
         }
-        const normalized = normalizeTv(rawShow, movieGenres, tvGenres, episodeDetail);
+        const normalized = normalizeTv(
+          rawShow,
+          movieGenres,
+          tvGenres,
+          episodeDetail,
+          episodeDetail?.['watch/providers']
+        );
         itemsMap.set(normalized.id, normalized);
       })
     );
+    // Rate limit pacing: 250ms polite pause between batches to protect free tier limit
+    if (i + BATCH_SIZE < tvArray.length) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
   }
 
   const items = Array.from(itemsMap.values());

@@ -3,6 +3,7 @@ AGENTS.md
 PLAN.md
 skills-lock.json
 .agents/
+docs/
 
 # ===== Copied runtime assets (generated during build/deploy) =====
 app/public/*.wasm

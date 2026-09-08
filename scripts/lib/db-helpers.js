@@ -15,9 +15,23 @@ const DB_PATH = resolve(__dirname, '..', '..', 'data', 'aggregator.db');
  * upsert(item) inserts a new row or updates an existing one,
  * but NEVER overwrites first_seen_at on existing rows.
  */
-export function openDb() {
-  const db = new Database(DB_PATH);
+export function openDb(dbPath = DB_PATH) {
+  const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS items (
+      id            TEXT PRIMARY KEY,
+      type          TEXT,
+      title         TEXT,
+      date          TEXT,
+      first_seen_at TEXT,
+      source        TEXT,
+      url           TEXT,
+      image         TEXT,
+      tags          TEXT
+    );
+  `);
 
   const upsertStmt = db.prepare(`
     INSERT INTO items (id, type, title, date, first_seen_at, source, url, image, tags)

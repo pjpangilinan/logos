@@ -28,12 +28,14 @@ function getUpcomingDateRange() {
 }
 
 /**
- * Fetch a JSON endpoint from RAWG API.
+ * Fetch a JSON endpoint from RAWG API with retry and rate limit pacing.
  * @param {string} endpoint
  * @param {Record<string, string | number>} params
+ * @param {number} retries
+ * @param {number} backoffMs
  * @returns {Promise<any>}
  */
-async function fetchRawg(endpoint, params = {}) {
+async function fetchRawg(endpoint, params = {}, retries = 3, backoffMs = 1500) {
   const url = new URL(`${BASE_URL}${endpoint}`);
   url.searchParams.set('key', API_KEY);
 
@@ -43,46 +45,46 @@ async function fetchRawg(endpoint, params = {}) {
     }
   }
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      Accept: 'application/json',
-      'User-Agent': 'logos-aggregator/1.0',
-    },
-  });
+  // Rate limit pacing: 300ms polite pause before request
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(
-      `RAWG API request failed (${response.status} ${response.statusText}): ${errorText.slice(0, 200)}`
-    );
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url.toString(), {
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'logos-aggregator/1.0',
+        },
+      });
+
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('retry-after');
+        const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : backoffMs * attempt;
+        console.warn(`[RAWG] Rate limited (429) on ${endpoint}. Retrying after ${waitMs}ms (attempt ${attempt}/${retries})...`);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        continue;
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(
+          `RAWG API request failed (${response.status} ${response.statusText}): ${errorText.slice(0, 200)}`
+        );
+      }
+
+      return await response.json();
+    } catch (err) {
+      if (attempt >= retries || err.message.includes('404')) {
+        throw err;
+      }
+      console.warn(`[RAWG] Request to ${endpoint} failed (attempt ${attempt}/${retries}): ${err.message}. Retrying...`);
+      await new Promise((resolve) => setTimeout(resolve, backoffMs * attempt));
+    }
   }
-
-  return response.json();
 }
 
-/**
- * Normalize a RAWG game object into the aggregator item shape.
- * @param {object} game
- * @returns {object|null}
- */
-function normalizeGame(game) {
-  if (!game || !game.id) {
-    return null;
-  }
+import { normalizeGame } from './lib/normalization-helpers.js';
 
-  return {
-    id: `rawg:${game.id}`,
-    type: 'game',
-    title: game.name || 'Untitled Game',
-    date: game.released || null,
-    source: 'rawg',
-    url: game.slug ? `https://rawg.io/games/${game.slug}` : null,
-    image: game.background_image || null,
-    tags: Array.isArray(game.genres)
-      ? game.genres.map((genre) => genre.name).filter(Boolean)
-      : [],
-  };
-}
 
 async function main() {
   if (!API_KEY) {

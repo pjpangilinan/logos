@@ -1,1 +1,84 @@
 @import "tailwindcss";
+
+@theme {
+  --color-dark-bg: #0d0e12;
+  --color-dark-surface: #15161d;
+  --color-deep-dark: #17171c;
+  --color-dark-border: #232530;
+  --color-dark-border-subtle: #2d303e;
+  --color-secondary: #0055c7;
+  --color-secondary-container: #2c6ee8;
+  --color-secondary-fixed: #d9e2ff;
+  --color-secondary-fixed-dim: #b0c6ff;
+  --color-tertiary-fixed-dim: #f1afff;
+  --color-tertiary-container: #330043;
+  --color-outline: #7e7576;
+  --color-outline-variant: #cfc4c5;
+  --color-surface: #fbf8ff;
+  --color-surface-card: #ffffff;
+  --color-surface-snow: #fafafa;
+  --color-surface-container: #eeecfa;
+  --color-surface-container-low: #f4f2ff;
+  --color-on-surface: #1a1b24;
+  --color-on-surface-variant: #4c4546;
+  --color-on-primary: #ffffff;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #fefcff;
+  --color-error: #ba1a1a;
+  --color-primary: #000000;
+  --color-primary-container: #1b1b1b;
+  
+  --font-headline-sm: "Space Grotesk", sans-serif;
+  --font-headline-md: "Space Grotesk", sans-serif;
+  --font-headline-lg: "Space Grotesk", sans-serif;
+  --font-display-hero: "Space Grotesk", sans-serif;
+  --font-label-code: "Space Grotesk", monospace;
+  --font-label-caps: "Space Grotesk", sans-serif;
+  --font-body-sm: "Inter", sans-serif;
+  --font-body-md: "Inter", sans-serif;
+  --font-body-lg: "Inter", sans-serif;
+
+  --spacing-gutter: 1.5rem;
+  --spacing-space-2xs: 0.25rem;
+  --spacing-space-xs: 0.5rem;
+  --spacing-space-sm: 0.75rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-space-xl: 2rem;
+  --spacing-space-2xl: 3rem;
+  --spacing-space-3xl: 4.5rem;
+  --spacing-space-4xl: 6rem;
+}
+
+@layer utilities {
+  .text-headline-sm { font-size: 24px; line-height: 32px; font-weight: 500; }
+  .text-headline-md { font-size: 32px; line-height: 40px; font-weight: 500; }
+  .text-headline-lg { font-size: 44px; line-height: 52px; font-weight: 500; }
+  .text-display-hero { font-size: 64px; line-height: 72px; font-weight: 600; }
+  .text-display-hero-mobile { font-size: 38px; line-height: 46px; font-weight: 600; }
+  .text-label-code { font-size: 12px; line-height: 16px; font-weight: 600; }
+  .text-label-caps { font-size: 11px; line-height: 14px; font-weight: 600; }
+  .text-body-sm { font-size: 14px; line-height: 20px; font-weight: 400; }
+  .text-body-md { font-size: 16px; line-height: 24px; font-weight: 400; }
+  .text-body-lg { font-size: 18px; line-height: 28px; font-weight: 400; }
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  display: inline-block;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
+.material-symbols-fill {
+  font-variation-settings: 'FILL' 1;
+}
+

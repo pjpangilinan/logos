@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Ensure trailing slash on GitHub Pages so relative asset resolution works seamlessly
+      if (window.location.pathname === '/logos') {
+        window.location.replace('/logos/' + window.location.search + window.location.hash);
+      }
+    </script>
     <title>logos</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

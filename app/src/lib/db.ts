@@ -30,6 +30,23 @@ export interface QueryFilters {
 let db: SqlJsDatabase | null = null;
 let loadingPromise: Promise<SqlJsDatabase> | null = null;
 
+// ─── Base URL helper ────────────────────────────────────────────────────────
+
+function getBaseUrl(): string {
+  if (typeof window !== 'undefined' && window.location) {
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+    // Handle GitHub Pages project site path (/logos/ or /logos)
+    if (pathname.startsWith('/logos')) {
+      return `${origin}/logos/`;
+    }
+    const dir = pathname.substring(0, pathname.lastIndexOf('/') + 1);
+    return `${origin}${dir || '/'}`;
+  }
+  const base = import.meta.env.BASE_URL || '/';
+  return base.endsWith('/') ? base : `${base}/`;
+}
+
 // ─── Loader ─────────────────────────────────────────────────────────────────
 
 /**
@@ -40,23 +57,34 @@ export async function loadDb(): Promise<SqlJsDatabase> {
   if (db) return db;
   if (loadingPromise) return loadingPromise;
 
-  loadingPromise = (async () => {
-    const base = import.meta.env.BASE_URL || '/';
-    const cleanBase = base.endsWith('/') ? base : `${base}/`;
+  const baseUrl = getBaseUrl();
 
-    const SQL = await initSqlJs({
-      // sql.js will load the WASM binary from this path at runtime.
-      locateFile: (file: string) => `${cleanBase}${file}`,
-    });
+  loadingPromise = Promise.race([
+    (async () => {
+      const SQL = await initSqlJs({
+        // sql.js will load the WASM binary from this path at runtime.
+        locateFile: (file: string) => `${baseUrl}${file}`,
+      });
 
-    const response = await fetch(`${cleanBase}aggregator.db`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch aggregator.db: ${response.status} ${response.statusText}`);
-    }
-    const buffer = await response.arrayBuffer();
-    db = new SQL.Database(new Uint8Array(buffer));
-    return db;
-  })();
+      const response = await fetch(`${baseUrl}aggregator.db`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch aggregator.db: HTTP ${response.status} ${response.statusText}`);
+      }
+      const buffer = await response.arrayBuffer();
+      db = new SQL.Database(new Uint8Array(buffer));
+      return db;
+    })(),
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error('Timed out initializing SQLite WASM database after 15s. Please reload or check your connection.')),
+        15000
+      )
+    ),
+  ]).catch((err) => {
+    // Reset so user can retry without getting a permanently failed promise
+    loadingPromise = null;
+    throw err;
+  });
 
   return loadingPromise;
 }

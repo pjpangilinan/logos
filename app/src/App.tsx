@@ -20,6 +20,7 @@ function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastDismissedId, setLastDismissedId] = useState<string | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [slowLoad, setSlowLoad] = useState(false);
 
   const {
     preferences,
@@ -149,10 +150,17 @@ function App() {
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
+  // Watchdog for slow load feedback
+  useEffect(() => {
+    if (!loading) return;
+    const timer = setTimeout(() => setSlowLoad(true), 3500);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-dark-bg text-on-primary flex items-center justify-center">
-        <div className="text-center flex flex-col items-center gap-3">
+      <div className="min-h-screen bg-dark-bg text-on-primary flex items-center justify-center p-gutter">
+        <div className="text-center flex flex-col items-center gap-3 max-w-sm">
           <img
             src={`${import.meta.env.BASE_URL}icon.png`}
             alt="logos"
@@ -163,6 +171,20 @@ function App() {
             <span className="w-2 h-2 rounded-full bg-secondary-container animate-ping"></span>
             <span>Initializing SQLite WASM Container...</span>
           </div>
+
+          {slowLoad && (
+            <div className="mt-3 flex flex-col items-center gap-2 animate-fade-in border border-dark-border/50 bg-dark-surface/60 p-3 rounded-xl">
+              <span className="text-[11px] text-outline font-label-code">
+                Downloading SQLite dataset (~190KB)...
+              </span>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-3 py-1 text-[11px] bg-secondary-container text-on-primary font-label-code rounded-lg cursor-pointer hover:bg-secondary-fixed-dim transition-colors"
+              >
+                Reload Page
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );

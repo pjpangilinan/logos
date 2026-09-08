@@ -8,6 +8,7 @@ interface NavbarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   likedCount: number;
+  onOpenShortcuts: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -16,12 +17,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   searchQuery,
   onSearchChange,
   likedCount,
+  onOpenShortcuts,
 }) => {
-  const navItems: { id: PageId; label: string; badge?: number }[] = [
-    { id: 'radar', label: 'Radar' },
-    { id: 'explorer', label: 'Explorer' },
-    { id: 'library', label: 'My Library', badge: likedCount },
-    { id: 'settings', label: 'Settings & Sync' },
+  const navItems: { id: PageId; label: string; shortcut: string; badge?: number }[] = [
+    { id: 'radar', label: 'Radar', shortcut: '1' },
+    { id: 'explorer', label: 'Explorer', shortcut: '2' },
+    { id: 'library', label: 'My Library', shortcut: '3', badge: likedCount },
+    { id: 'settings', label: 'Settings & Sync', shortcut: '4' },
   ];
 
   return (
@@ -57,6 +59,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }`}
                 >
                   {item.label}
+                  <kbd className="hidden xl:inline-block font-label-code text-[9px] text-outline/50 bg-deep-dark/60 px-1 py-0.2 rounded border border-dark-border/40 ml-0.5">
+                    {item.shortcut}
+                  </kbd>
                   {item.badge !== undefined && item.badge > 0 && (
                     <span className="font-label-code text-[10px] bg-secondary-container/30 text-secondary-fixed-dim px-1.5 py-0.2 rounded-full">
                       {item.badge}
@@ -77,7 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search releases..."
+              placeholder="Search releases (/)..."
               className="bg-transparent text-on-primary font-body-sm text-body-sm focus:outline-none placeholder:text-outline w-full"
             />
             {searchQuery ? (
@@ -89,7 +94,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             ) : (
               <kbd className="font-label-code text-[10px] bg-deep-dark px-1.5 py-0.5 rounded text-outline border border-dark-border">
-                ⌘K
+                /
               </kbd>
             )}
           </div>
@@ -122,6 +127,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             ))}
           </div>
+
+          {/* Shortcuts cheatsheet button */}
+          <button
+            onClick={onOpenShortcuts}
+            className="p-2 rounded-xl bg-dark-surface border border-dark-border text-outline-variant hover:text-on-primary transition-colors flex items-center gap-1"
+            title="Keyboard Shortcuts (?)"
+            type="button"
+          >
+            <span className="material-symbols-outlined text-[18px]">keyboard</span>
+            <kbd className="hidden sm:inline-block font-label-code text-[10px] text-outline bg-deep-dark px-1 py-0.2 rounded border border-dark-border/40">
+              ?
+            </kbd>
+          </button>
 
           <button
             onClick={() => onSelectPage('library')}

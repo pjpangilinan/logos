@@ -7,6 +7,8 @@ import { ExplorerPage } from './components/ExplorerPage';
 import { LibraryPage } from './components/LibraryPage';
 import { SettingsPage } from './components/SettingsPage';
 import { loadCustomFeeds, fetchAllActiveCustomFeeds } from './lib/customFeeds';
+import { ShortcutsModal } from './components/ShortcutsModal';
+import { parseKeyboardShortcut } from './lib/keyboard';
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -17,6 +19,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastDismissedId, setLastDismissedId] = useState<string | null>(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const {
     preferences,
@@ -105,13 +108,34 @@ function App() {
     }
   }, []);
 
-  // Keyboard shortcut: Cmd+K or Ctrl+K
+  // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      const action = parseKeyboardShortcut(e);
+      if (!action) return;
+
+      if (action.type === 'NAVIGATE') {
+        setActivePage(action.page);
+      } else if (action.type === 'FOCUS_SEARCH') {
         e.preventDefault();
         const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement;
-        if (searchInput) searchInput.focus();
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+      } else if (action.type === 'BLUR_SEARCH') {
+        setShortcutsOpen(false);
+        const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement;
+        if (searchInput && document.activeElement === searchInput) {
+          searchInput.blur();
+        }
+      } else if (action.type === 'TOGGLE_SHORTCUTS') {
+        e.preventDefault();
+        setShortcutsOpen((prev) => !prev);
+      } else if (action.type === 'SCROLL_DOWN') {
+        window.scrollBy({ top: 320, behavior: 'smooth' });
+      } else if (action.type === 'SCROLL_UP') {
+        window.scrollBy({ top: -320, behavior: 'smooth' });
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -171,6 +195,13 @@ function App() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         likedCount={likedCount}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
+      />
+
+      {/* ─── Keyboard Shortcuts Modal ───────────────────────────────── */}
+      <ShortcutsModal
+        isOpen={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
       />
 
       {/* ─── Main Content Canvas (offset for fixed header) ──────────── */}

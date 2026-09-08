@@ -5,10 +5,10 @@ on:
   workflow_run:
     workflows: ["Fetch Data"]
     types: [completed]
-    branches: [main]
-  # Also deploy on pushes to main (e.g. code changes)
+    branches: [main, master]
+  # Also deploy on pushes to main or master (e.g. code changes)
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
 
 permissions:

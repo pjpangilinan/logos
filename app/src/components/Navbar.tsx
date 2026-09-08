@@ -38,7 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <img
               alt="logos logo"
               className="h-8 w-8 object-contain rounded-lg shadow-sm group-hover:scale-105 transition-transform"
-              src="/icon.png"
+              src={`${import.meta.env.BASE_URL}icon.png`}
             />
             <span className="font-headline-sm text-headline-sm lowercase tracking-tight text-on-primary">
               logos

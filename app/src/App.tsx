@@ -154,7 +154,7 @@ function App() {
       <div className="min-h-screen bg-dark-bg text-on-primary flex items-center justify-center">
         <div className="text-center flex flex-col items-center gap-3">
           <img
-            src="/icon.png"
+            src={`${import.meta.env.BASE_URL}icon.png`}
             alt="logos"
             className="w-12 h-12 object-contain animate-pulse rounded-xl"
           />
@@ -273,7 +273,11 @@ function App() {
       <footer className="w-full bg-dark-bg border-t border-dark-border mt-auto">
         <div className="w-full max-w-[1440px] mx-auto px-gutter py-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md">
           <div className="flex items-center gap-space-xs text-xs text-outline">
-            <img src="/icon.png" alt="logos logo" className="h-5 w-5 object-contain rounded" />
+            <img
+              src={`${import.meta.env.BASE_URL}icon.png`}
+              alt="logos logo"
+              className="h-5 w-5 object-contain rounded"
+            />
             <span className="font-headline-sm text-sm lowercase tracking-tight text-on-primary">
               logos
             </span>

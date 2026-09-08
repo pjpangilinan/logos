@@ -1,5 +1,17 @@
 # logos
 
+[![Deploy to GitHub Pages](https://github.com/pjpangilinan/logos/actions/workflows/deploy.yml/badge.svg)](https://github.com/pjpangilinan/logos/actions/workflows/deploy.yml)
+[![Fetch Data](https://github.com/pjpangilinan/logos/actions/workflows/fetch.yml/badge.svg)](https://github.com/pjpangilinan/logos/actions/workflows/fetch.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+![React](https://img.shields.io/badge/React_19-20232A?style=flat&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite_6-646CFF?style=flat&logo=vite&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_4-06B6D4?style=flat&logo=tailwindcss&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite_WASM-003B57?style=flat&logo=sqlite&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=flat&logo=githubactions&logoColor=white)
+![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-222222?style=flat&logo=githubpages&logoColor=white)
+
 A lightweight personal release radar for movies, TV series, games, and news.  
 Runs 100% on free static infrastructure (GitHub Actions + GitHub Pages + client-side SQLite via WASM). No backend server, zero hosting cost.
 
@@ -46,7 +58,10 @@ Open `http://localhost:5173`.
 3. **Enable Write Permissions**:
    - Go to **Settings** → **Actions** → **General** → Workflow permissions → select **Read and write permissions** → click **Save**.
 
-4. *(Optional)* Add free `TMDB_API_KEY` and `RAWG_API_KEY` in repository **Settings** → **Secrets and variables** → **Actions** for daily scheduled data fetches.
+4. *(Optional)* Add free `TMDB_API_KEY` and `RAWG_API_KEY` in repository **Settings** → **Secrets and variables** → **Actions** for scheduled data fetches:
+   - **Automated Schedule**: Runs every day at **06:00 UTC** (2:00 PM UTC+8 / Philippine Time).
+   - **Manual Trigger**: Under **Actions** tab → select **Fetch Data** → click **Run workflow**.
+   - **Auto Deploy**: After each fetch, GitHub Pages re-deploys automatically with the freshly updated SQLite database.
 
 ---
 

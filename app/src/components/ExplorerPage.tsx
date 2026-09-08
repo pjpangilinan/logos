@@ -6,6 +6,7 @@ import {
   KNOWN_STREAMING_PROVIDERS,
   KNOWN_GAMING_PLATFORMS,
 } from '../lib/platforms';
+import { MonthlyCalendar } from './MonthlyCalendar';
 
 interface ExplorerPageProps {
   items: Item[];
@@ -19,7 +20,7 @@ interface ExplorerPageProps {
 
 type ExplorerCategory = 'all' | 'movies' | 'games' | 'tech';
 type SortOption = 'anticipated' | 'release' | 'title';
-type ViewMode = 'grid' | 'timeline';
+type ViewMode = 'grid' | 'timeline' | 'calendar';
 type WindowFilter = 'all' | 'this-week' | 'next-30' | 'past-30';
 
 export const ExplorerPage: React.FC<ExplorerPageProps> = ({
@@ -324,6 +325,19 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
                 >
                   <span className="material-symbols-outlined text-[16px]">timeline</span>
                   <span className="hidden sm:inline">Timeline</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('calendar')}
+                  className={`flex items-center gap-1 px-space-sm py-1 rounded-lg font-label-code text-label-code transition-all ${
+                    viewMode === 'calendar'
+                      ? 'bg-secondary-container text-on-primary shadow-sm font-semibold'
+                      : 'text-outline hover:text-on-primary'
+                  }`}
+                  type="button"
+                  title="Monthly Calendar View"
+                >
+                  <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                  <span className="hidden sm:inline">Calendar</span>
                 </button>
               </div>
             </div>
@@ -724,6 +738,15 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
                   );
                 })}
               </div>
+            )}
+
+            {/* Calendar View */}
+            {viewMode === 'calendar' && (
+              <MonthlyCalendar
+                items={processedItems}
+                isLiked={isLiked}
+                toggleLike={toggleLike}
+              />
             )}
           </div>
         </div>

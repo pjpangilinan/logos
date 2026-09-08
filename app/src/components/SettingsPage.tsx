@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
 import type { Item } from '../lib/db';
+import {
+  loadCustomFeeds,
+  addCustomFeed,
+  removeCustomFeed,
+  toggleCustomFeed,
+  type CustomFeed,
+} from '../lib/customFeeds';
 
 interface SettingsPageProps {
   items: Item[];
@@ -18,6 +25,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   dismissedCount,
   onClearAllData,
 }) => {
+  const [customFeeds, setCustomFeeds] = useState<CustomFeed[]>(() => loadCustomFeeds());
+  const [newFeedName, setNewFeedName] = useState('');
+  const [newFeedUrl, setNewFeedUrl] = useState('');
+  const [newFeedCategory, setNewFeedCategory] = useState('Tech');
+  const [isAddingFeed, setIsAddingFeed] = useState(false);
+  const [isSyncingFeeds, setIsSyncingFeeds] = useState(false);
+
   const [hypeWeight, setHypeWeight] = useState(() => {
     return Number(localStorage.getItem('logos_weight_hype') || 65);
   });
@@ -55,12 +69,54 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     showStatus('Database indexed & refreshed from memory');
   };
 
+  const handleAddFeed = (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = addCustomFeed(newFeedName, newFeedUrl, newFeedCategory);
+    if (res.success) {
+      setCustomFeeds(loadCustomFeeds());
+      setNewFeedName('');
+      setNewFeedUrl('');
+      setIsAddingFeed(false);
+      showStatus(`Subscribed to ${res.feed?.name}`);
+      onRefreshData();
+    } else {
+      showStatus(res.error || 'Failed to add feed');
+    }
+  };
+
+  const handleToggleFeed = (id: string) => {
+    const updated = toggleCustomFeed(id);
+    setCustomFeeds(updated);
+    onRefreshData();
+  };
+
+  const handleRemoveFeed = (id: string) => {
+    const updated = removeCustomFeed(id);
+    setCustomFeeds(updated);
+    showStatus('Feed subscription removed');
+    onRefreshData();
+  };
+
+  const handleSyncFeeds = async () => {
+    setIsSyncingFeeds(true);
+    showStatus('Syncing active RSS feeds...');
+    try {
+      await onRefreshData();
+      showStatus('Custom feeds refreshed');
+    } catch {
+      showStatus('Feed sync failed');
+    } finally {
+      setIsSyncingFeeds(false);
+    }
+  };
+
   const handleExportBackup = () => {
     const backup = {
-      version: '2.4',
+      version: '2.5',
       date: new Date().toISOString(),
       preferences: localStorage.getItem('aggregator_preferences_v1') || '{}',
       watched: localStorage.getItem('logos_watched_ids') || '[]',
+      customFeeds: localStorage.getItem('logos_custom_feeds_v1') || '[]',
       weights: { hype: hypeWeight, genre: genreWeight, recency: recencyWeight },
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -86,10 +142,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         if (data.watched) {
           localStorage.setItem('logos_watched_ids', data.watched);
         }
+        if (data.customFeeds) {
+          localStorage.setItem('logos_custom_feeds_v1', typeof data.customFeeds === 'string' ? data.customFeeds : JSON.stringify(data.customFeeds));
+        }
         if (data.weights) {
           handleSaveWeights(data.weights.hype, data.weights.genre, data.weights.recency);
         }
-        showStatus('Preferences restored. Reloading...');
+        showStatus('Preferences & feeds restored. Reloading...');
         setTimeout(() => window.location.reload(), 800);
       } catch {
         showStatus('Invalid backup JSON file');
@@ -406,7 +465,177 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
         </section>
 
-        {/* ─── SECTION 3: Storage Management & Preferences Backup ─────── */}
+        {/* ─── SECTION 3: Custom RSS Subscriptions & Feed Manager ─────── */}
+        <section className="w-full bg-dark-surface rounded-[22px] p-space-lg md:p-space-2xl flex flex-col gap-space-lg border border-dark-border/60 shadow-xl">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
+            <div className="flex flex-col gap-1">
+              <span className="font-label-code text-label-code text-secondary-fixed-dim uppercase tracking-widest">
+                CUSTOM SYNDICATION
+              </span>
+              <h2 className="font-headline-md text-headline-md text-on-primary tracking-tight">
+                Custom RSS Feeds
+              </h2>
+              <p className="font-body-sm text-body-sm text-outline-variant">
+                Subscribe to custom blogs, niche tech sources, or gaming publications.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-space-sm self-start md:self-auto">
+              <button
+                onClick={handleSyncFeeds}
+                disabled={isSyncingFeeds || customFeeds.length === 0}
+                className="inline-flex items-center gap-1.5 px-space-md py-2 rounded-xl bg-deep-dark hover:bg-dark-bg border border-dark-border text-outline-variant hover:text-on-primary font-headline-sm text-body-sm transition-all disabled:opacity-50"
+                type="button"
+              >
+                <span className={`material-symbols-outlined text-[16px] ${isSyncingFeeds ? 'animate-spin' : ''}`}>
+                  sync
+                </span>
+                <span>{isSyncingFeeds ? 'Syncing...' : 'Sync Feeds'}</span>
+              </button>
+
+              <button
+                onClick={() => setIsAddingFeed(!isAddingFeed)}
+                className="inline-flex items-center gap-1.5 px-space-md py-2 rounded-xl bg-secondary-container text-on-primary font-headline-sm text-body-sm hover:brightness-110 transition-all"
+                type="button"
+              >
+                <span className="material-symbols-outlined text-[16px]">
+                  {isAddingFeed ? 'close' : 'add'}
+                </span>
+                <span>{isAddingFeed ? 'Cancel' : 'Add Feed'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Add Feed Inline Form */}
+          {isAddingFeed && (
+            <form
+              onSubmit={handleAddFeed}
+              className="bg-deep-dark p-space-lg rounded-2xl border border-secondary-container/40 flex flex-col md:flex-row items-stretch md:items-end gap-space-md"
+            >
+              <div className="flex-1 flex flex-col gap-1">
+                <label className="font-label-caps text-[11px] uppercase text-outline tracking-wider">
+                  Feed Title
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Eurogamer / Lobsters"
+                  value={newFeedName}
+                  onChange={(e) => setNewFeedName(e.target.value)}
+                  className="bg-dark-bg border border-dark-border/60 rounded-xl px-space-md py-2 text-on-primary text-body-sm focus:outline-none focus:border-secondary-container"
+                />
+              </div>
+
+              <div className="flex-[2] flex flex-col gap-1">
+                <label className="font-label-caps text-[11px] uppercase text-outline tracking-wider">
+                  RSS / Atom URL
+                </label>
+                <input
+                  type="url"
+                  required
+                  placeholder="https://example.com/rss.xml"
+                  value={newFeedUrl}
+                  onChange={(e) => setNewFeedUrl(e.target.value)}
+                  className="bg-dark-bg border border-dark-border/60 rounded-xl px-space-md py-2 text-on-primary text-body-sm focus:outline-none focus:border-secondary-container"
+                />
+              </div>
+
+              <div className="w-36 flex flex-col gap-1">
+                <label className="font-label-caps text-[11px] uppercase text-outline tracking-wider">
+                  Category
+                </label>
+                <select
+                  value={newFeedCategory}
+                  onChange={(e) => setNewFeedCategory(e.target.value)}
+                  className="bg-dark-bg border border-dark-border/60 rounded-xl px-space-md py-2 text-on-primary text-body-sm focus:outline-none focus:border-secondary-container cursor-pointer"
+                >
+                  <option value="Tech">Tech</option>
+                  <option value="Gaming">Gaming</option>
+                  <option value="News">News</option>
+                  <option value="Personal">Personal</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                className="px-space-lg py-2 rounded-xl bg-secondary-container text-on-primary font-headline-sm text-body-sm self-end cursor-pointer hover:brightness-110"
+              >
+                Save
+              </button>
+            </form>
+          )}
+
+          {/* Subscribed Feeds List */}
+          {customFeeds.length === 0 ? (
+            <div className="bg-deep-dark rounded-2xl p-space-xl text-center border border-dark-border/40 text-outline">
+              <span className="material-symbols-outlined text-3xl mb-1 opacity-40">rss_feed</span>
+              <p className="text-body-sm text-outline-variant">
+                No custom RSS feeds subscribed yet. Click "Add Feed" to subscribe to your favorite blogs.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {customFeeds.map((feed) => (
+                <div
+                  key={feed.id}
+                  className="bg-deep-dark rounded-xl p-space-md border border-dark-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-space-md hover:border-dark-border transition-all"
+                >
+                  <div className="flex items-center gap-space-md min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-dark-bg border border-dark-border/60 flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-secondary-fixed-dim text-[20px]">
+                        rss_feed
+                      </span>
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-headline-sm text-[15px] text-on-primary font-semibold truncate">
+                          {feed.name}
+                        </span>
+                        <span className="px-1.5 py-0.2 rounded bg-secondary-container/20 text-secondary-fixed-dim font-label-code text-[10px] uppercase font-bold">
+                          {feed.category}
+                        </span>
+                      </div>
+                      <a
+                        href={feed.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-label-code text-[11px] text-outline hover:text-secondary-fixed-dim transition-colors truncate block"
+                      >
+                        {feed.url}
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-space-sm flex-shrink-0 self-end sm:self-auto">
+                    <button
+                      onClick={() => handleToggleFeed(feed.id)}
+                      className={`px-space-sm py-1 rounded-lg font-label-code text-[11px] transition-colors border ${
+                        feed.enabled
+                          ? 'bg-secondary-container/20 text-secondary-fixed-dim border-secondary-container/40'
+                          : 'bg-dark-bg text-outline border-dark-border/40'
+                      }`}
+                      type="button"
+                    >
+                      {feed.enabled ? 'Active' : 'Paused'}
+                    </button>
+
+                    <button
+                      onClick={() => handleRemoveFeed(feed.id)}
+                      className="p-1.5 rounded-lg text-outline hover:text-error hover:bg-dark-bg transition-colors"
+                      title="Unsubscribe feed"
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ─── SECTION 4: Storage Management & Preferences Backup ─────── */}
         <section className="w-full bg-dark-surface rounded-[22px] p-space-lg md:p-space-2xl flex flex-col gap-space-lg border border-dark-border/60 shadow-xl">
           <div className="flex flex-col gap-1">
             <span className="font-label-code text-label-code text-secondary-fixed-dim uppercase tracking-widest">

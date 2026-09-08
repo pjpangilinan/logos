@@ -7,6 +7,7 @@ import { RadarPage } from './components/RadarPage';
 import { ExplorerPage } from './components/ExplorerPage';
 import { LibraryPage } from './components/LibraryPage';
 import { SettingsPage } from './components/SettingsPage';
+import { loadCustomFeeds, fetchAllActiveCustomFeeds } from './lib/customFeeds';
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -31,11 +32,32 @@ function App() {
 
   const loadData = useCallback(() => {
     loadDb()
-      .then(() => {
-        setCounts(getCountsByType());
+      .then(async () => {
+        const baseCounts = getCountsByType();
         const initial = getItems({ limit: 600 });
         setAllItems(initial);
+        setCounts(baseCounts);
         setLoading(false);
+
+        // Background fetch custom feeds if any enabled
+        const customFeeds = loadCustomFeeds();
+        if (customFeeds.some((f) => f.enabled)) {
+          try {
+            const customItems = await fetchAllActiveCustomFeeds(customFeeds);
+            if (customItems.length > 0) {
+              setAllItems((prev) => {
+                const existingIds = new Set(prev.map((i) => i.id));
+                const newItems = customItems.filter((i) => !existingIds.has(i.id));
+                const combined = [...newItems, ...prev];
+                const newsCount = combined.filter((i) => i.type === 'news').length;
+                setCounts((c) => ({ ...c, news: newsCount }));
+                return combined;
+              });
+            }
+          } catch (err) {
+            console.warn('Failed to load custom feeds:', err);
+          }
+        }
       })
       .catch((err) => {
         console.error('Failed to load database:', err);

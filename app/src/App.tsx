@@ -198,8 +198,13 @@ function App() {
           <h2 className="font-headline-sm text-lg">Failed to Load Database</h2>
           <p className="font-body-sm text-xs text-outline">{error}</p>
           <button
-            onClick={() => window.location.reload()}
-            className="px-space-md py-2 rounded-xl bg-secondary-container text-on-primary text-xs font-label-code"
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              setSlowLoad(false);
+              loadData();
+            }}
+            className="px-space-md py-2 rounded-xl bg-secondary-container text-on-primary text-xs font-label-code cursor-pointer hover:bg-secondary-fixed-dim transition-colors"
           >
             Retry Connection
           </button>

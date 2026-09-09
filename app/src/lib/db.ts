@@ -61,23 +61,26 @@ export async function loadDb(): Promise<SqlJsDatabase> {
 
   loadingPromise = Promise.race([
     (async () => {
-      const SQL = await initSqlJs({
-        // sql.js will load the WASM binary from this path at runtime.
-        locateFile: (file: string) => `${baseUrl}${file}`,
-      });
+      // Fetch WASM engine and aggregator.db in parallel to avoid serial waterfall
+      const [SQL, dbBuffer] = await Promise.all([
+        initSqlJs({
+          locateFile: (file: string) => `${baseUrl}${file}`,
+        }),
+        fetch(`${baseUrl}aggregator.db`).then((response) => {
+          if (!response.ok) {
+            throw new Error(`Failed to fetch aggregator.db: HTTP ${response.status} ${response.statusText}`);
+          }
+          return response.arrayBuffer();
+        }),
+      ]);
 
-      const response = await fetch(`${baseUrl}aggregator.db`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch aggregator.db: HTTP ${response.status} ${response.statusText}`);
-      }
-      const buffer = await response.arrayBuffer();
-      db = new SQL.Database(new Uint8Array(buffer));
+      db = new SQL.Database(new Uint8Array(dbBuffer));
       return db;
     })(),
     new Promise<never>((_, reject) =>
       setTimeout(
-        () => reject(new Error('Timed out initializing SQLite WASM database after 15s. Please reload or check your connection.')),
-        15000
+        () => reject(new Error('Timed out initializing SQLite WASM database after 45s. Please reload or check your connection.')),
+        45000
       )
     ),
   ]).catch((err) => {

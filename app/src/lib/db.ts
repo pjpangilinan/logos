@@ -156,10 +156,28 @@ function query(sql: string, params: Record<string, unknown> = {}): Item[] {
 // ─── Public query functions ─────────────────────────────────────────────────
 
 /**
+ * Load initial items for dashboard:
+ * Guarantees that ALL movies, TV shows, and games are loaded in full,
+ * and caps news to at most 120 most recent items so news can never crowd out entertainment.
+ */
+export function getInitialItems(): Item[] {
+  return query(`
+    SELECT * FROM (
+      SELECT * FROM items WHERE type != 'news'
+      UNION ALL
+      SELECT * FROM (
+        SELECT * FROM items WHERE type = 'news' ORDER BY first_seen_at DESC, date DESC LIMIT 120
+      )
+    )
+    ORDER BY first_seen_at DESC
+  `);
+}
+
+/**
  * Get items with optional filtering, sorting, and pagination.
  */
 export function getItems(filters: QueryFilters = {}): Item[] {
-  const { type, sort = 'newest', search, limit = 100, offset = 0 } = filters;
+  const { type, sort = 'newest', search, limit, offset = 0 } = filters;
   const conditions: string[] = [];
   const params: Record<string, unknown> = {};
 
@@ -175,10 +193,15 @@ export function getItems(filters: QueryFilters = {}): Item[] {
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const orderBy = sort === 'release' ? 'date DESC NULLS LAST' : 'first_seen_at DESC';
+  const limitClause = limit !== undefined ? `LIMIT $limit OFFSET $offset` : '';
+  if (limit !== undefined) {
+    params.$limit = limit;
+    params.$offset = offset;
+  }
 
   return query(
-    `SELECT * FROM items ${where} ORDER BY ${orderBy} LIMIT $limit OFFSET $offset`,
-    { ...params, $limit: limit, $offset: offset }
+    `SELECT * FROM items ${where} ORDER BY ${orderBy} ${limitClause}`,
+    params
   );
 }
 

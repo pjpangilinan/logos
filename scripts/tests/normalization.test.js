@@ -198,5 +198,46 @@ describe('TMDB & RAWG Normalization & Platform Matrix', () => {
         close();
       }
     });
+
+    it('caps news items to max limit while preserving movies and games', () => {
+      const { db, upsert, pruneNews, close } = openDb(':memory:');
+      try {
+        // Insert 1 movie and 1 game
+        upsert({ id: 'tmdb:movie:1', type: 'movie', title: 'Movie 1', date: '2026-09-01', source: 'tmdb' });
+        upsert({ id: 'rawg:game:1', type: 'game', title: 'Game 1', date: '2026-09-01', source: 'rawg' });
+
+        // Insert 10 news items with distinct timestamps
+        for (let i = 1; i <= 10; i++) {
+          const pad = String(i).padStart(2, '0');
+          db.prepare(`
+            INSERT INTO items (id, type, title, date, first_seen_at, source)
+            VALUES (?, 'news', ?, '2026-09-01', ?, 'rss:test')
+          `).run(`rss:news:${i}`, `News ${i}`, `2026-09-01T00:${pad}:00.000Z`);
+        }
+
+        assert.equal(db.prepare("SELECT COUNT(*) as c FROM items WHERE type = 'news'").get().c, 10);
+
+        // Cap to 5 news items
+        const removed = pruneNews(5);
+        assert.equal(removed, 5);
+
+        assert.equal(db.prepare("SELECT COUNT(*) as c FROM items WHERE type = 'news'").get().c, 5);
+        // Ensure movie and game were never touched
+        assert.equal(db.prepare("SELECT COUNT(*) as c FROM items WHERE type = 'movie'").get().c, 1);
+        assert.equal(db.prepare("SELECT COUNT(*) as c FROM items WHERE type = 'game'").get().c, 1);
+
+        // Ensure the 5 newest news items were kept (news:6 to news:10)
+        const keptNews = db.prepare("SELECT id FROM items WHERE type = 'news' ORDER BY first_seen_at ASC").all();
+        assert.deepEqual(keptNews.map(k => k.id), [
+          'rss:news:6',
+          'rss:news:7',
+          'rss:news:8',
+          'rss:news:9',
+          'rss:news:10',
+        ]);
+      } finally {
+        close();
+      }
+    });
   });
 });

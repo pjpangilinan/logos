@@ -87,9 +87,40 @@ export function openDb(dbPath = DB_PATH) {
     tx(items);
   }
 
+  /**
+   * Prune older news items to avoid unbounded RSS accumulation.
+   * Keeps the newest maxItems sorted by first_seen_at DESC, date DESC.
+   * @param {number} maxItems
+   */
+  function pruneNews(maxItems = 120) {
+    const countRow = db.prepare("SELECT COUNT(*) as count FROM items WHERE type = 'news'").get();
+    const countBefore = countRow ? countRow.count : 0;
+    if (countBefore <= maxItems) {
+      return 0;
+    }
+
+    const stmt = db.prepare(`
+      DELETE FROM items 
+      WHERE type = 'news' 
+        AND id NOT IN (
+          SELECT id FROM items 
+          WHERE type = 'news' 
+          ORDER BY first_seen_at DESC, date DESC 
+          LIMIT ?
+        )
+    `);
+    const result = stmt.run(maxItems);
+    try {
+      db.exec('VACUUM;');
+    } catch {
+      // ignore
+    }
+    return result.changes;
+  }
+
   function close() {
     db.close();
   }
 
-  return { db, upsert, upsertMany, close };
+  return { db, upsert, upsertMany, pruneNews, close };
 }

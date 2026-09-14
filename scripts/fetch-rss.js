@@ -2,6 +2,7 @@
 // Fetches news from Philippines and Tech RSS feeds and upserts them into data/aggregator.db.
 
 import { createHash } from 'crypto';
+import { fileURLToPath } from 'url';
 import Parser from 'rss-parser';
 import { openDb } from './lib/db-helpers.js';
 
@@ -108,9 +109,11 @@ async function fetchFeed(feed, upsertMany) {
   }
 }
 
+const MAX_NEWS_ITEMS = 120;
+
 async function main() {
   console.log(`Starting RSS feed fetch for ${FEEDS.length} feeds...`);
-  const { upsertMany, close } = openDb();
+  const { upsertMany, pruneNews, close } = openDb();
   let allFailed = false;
 
   try {
@@ -128,6 +131,12 @@ async function main() {
     console.log(`Failed feeds:     ${rejected.length}/${FEEDS.length}`);
     console.log(`Total items:      ${totalUpserted}`);
 
+    // Prune news items to avoid flooding
+    const prunedCount = pruneNews(MAX_NEWS_ITEMS);
+    if (prunedCount > 0) {
+      console.log(`[RSS] Pruned old news: removed ${prunedCount} items (capped to ${MAX_NEWS_ITEMS}).`);
+    }
+
     if (fulfilled.length === 0) {
       console.error('Error: All feeds failed to fetch.');
       allFailed = true;
@@ -141,7 +150,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('Fatal error running fetch-rss script:', err);
-  process.exit(1);
-});
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().catch((err) => {
+    console.error('Fatal error running fetch-rss script:', err);
+    process.exit(1);
+  });
+}

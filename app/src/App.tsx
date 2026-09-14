@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { loadDb, getItems, getCountsByType, type Item } from './lib/db';
+import { loadDb, getInitialItems, getCountsByType, type Item } from './lib/db';
 import { usePreferences } from './lib/preferences';
 import { Navbar, type PageId } from './components/Navbar';
 import { RadarPage } from './components/RadarPage';
@@ -37,7 +37,7 @@ function App() {
     loadDb()
       .then(async () => {
         const baseCounts = getCountsByType();
-        const initial = getItems({ limit: 600 });
+        const initial = getInitialItems();
         setAllItems(initial);
         setCounts(baseCounts);
         setLoading(false);

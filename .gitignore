@@ -36,3 +36,11 @@ Desktop.ini
 *.db-journal
 *.db-wal
 *.db-shm
+
+# ===== Interview Preparation & Cheat Sheet =====
+CHEAT_SHEET.md
+INTERVIEW_PREP.md
+INTERVIEW_CHEAT_SHEET.md
+*cheat-sheet*
+*cheatsheet*
+

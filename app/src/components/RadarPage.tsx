@@ -43,20 +43,13 @@ export const RadarPage: React.FC<RadarPageProps> = ({
       .slice(0, 10);
   }, [filteredItems]);
 
-  // Upcoming Radar: sorted strictly chronologically ASC (imminent first, then future)
+  // Upcoming Radar: strictly future/imminent releases sorted chronologically ASC
   const upcomingRadar = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const withDates = filteredItems.filter((i) => i.date);
-    const upcoming = withDates
-      .filter((i) => i.date! >= today)
-      .sort((a, b) => a.date!.localeCompare(b.date!));
-    const past = withDates
-      .filter((i) => i.date! < today)
-      .sort((a, b) => b.date!.localeCompare(a.date!));
-
-    // Prefer upcoming chronologically (closest to release date first)
-    const list = upcoming.length >= 8 ? upcoming : [...upcoming, ...past];
-    return list.slice(0, 15);
+    return filteredItems
+      .filter((i) => i.date && i.date >= today)
+      .sort((a, b) => a.date!.localeCompare(b.date!))
+      .slice(0, 15);
   }, [filteredItems]);
 
   // Popular & Trending items: strictly top 10, reactive to category filter and search

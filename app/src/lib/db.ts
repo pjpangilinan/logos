@@ -1,4 +1,5 @@
 import initSqlJs, { type Database as SqlJsDatabase } from 'sql.js';
+import { getPhtDateStr } from './timezone.ts';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -223,12 +224,12 @@ export function getNewItemsSince(since: string): Item[] {
 }
 
 /**
- * Get upcoming items (date in the future), sorted by release date ascending.
+ * Get upcoming items (date in the future in PHT, excluding news), sorted by release date ascending.
  */
 export function getUpcoming(): Item[] {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getPhtDateStr();
   return query(
-    'SELECT * FROM items WHERE date > $today ORDER BY date ASC',
+    "SELECT * FROM items WHERE type != 'news' AND date >= $today ORDER BY date ASC",
     { $today: today }
   );
 }

@@ -1,5 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import type { Item } from '../lib/db';
+import {
+  getPhtDateStr,
+  getPhtDateOffset,
+  formatPhtDateBadge,
+  formatPhtRelativeTime,
+  formatPhtCountdown,
+} from '../lib/timezone';
 
 interface RadarPageProps {
   items: Item[];
@@ -36,10 +43,10 @@ export const RadarPage: React.FC<RadarPageProps> = ({
     });
   }, [items, selectedFilter, searchQuery]);
 
-  // New Arrivals: items that have actually released (never unreleased future items, never ancient retro items)
+  // New Arrivals: items that have actually released in PHT (never unreleased future items, never ancient retro items)
   const newArrivals = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const today = getPhtDateStr();
+    const sixMonthsAgo = getPhtDateOffset(-180);
 
     return [...filteredItems]
       .filter((item) => {
@@ -61,9 +68,9 @@ export const RadarPage: React.FC<RadarPageProps> = ({
       .slice(0, 10);
   }, [filteredItems]);
 
-  // Upcoming Radar: strictly future/imminent releases sorted chronologically ASC (news is not an upcoming release)
+  // Upcoming Radar: strictly future/imminent releases in PHT sorted chronologically ASC (news is not an upcoming release)
   const upcomingRadar = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getPhtDateStr();
     return filteredItems
       .filter((i) => i.type !== 'news' && i.date && i.date >= today)
       .sort((a, b) => a.date!.localeCompare(b.date!))
@@ -72,7 +79,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
 
   // Popular & Trending items: strictly top 10 current items, reactive to category filter and search
   const popularItems = useMemo(() => {
-    const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const oneYearAgo = getPhtDateOffset(-365);
     const pool = filteredItems.filter((it) => {
       if (!it.image) return false;
       // Focus on current/recent/upcoming releases (exclude anything released over a year ago)
@@ -96,42 +103,10 @@ export const RadarPage: React.FC<RadarPageProps> = ({
     };
   }, [filteredItems, recPage]);
 
-  // Format date helper
-  const formatDateBadge = (dateStr: string | null) => {
-    if (!dateStr) return { month: 'TBA', day: '--' };
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return { month: 'TBA', day: '--' };
-    const month = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
-    const day = d.getDate().toString().padStart(2, '0');
-    return { month, day };
-  };
-
   const [currentTimestamp] = useState(() => Date.now());
-
-  const formatRelativeTime = (dateStr: string) => {
-    const diffMs = currentTimestamp - new Date(dateStr).getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    if (diffHours < 1) return 'Just now';
-    if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 30) return `${diffDays}d ago`;
-    return `${Math.floor(diffDays / 30)}mo ago`;
-  };
-
-  const formatCountdown = (dateStr: string | null) => {
-    if (!dateStr) return 'TBA';
-    const target = new Date(dateStr).getTime();
-    const diffDays = Math.ceil((target - currentTimestamp) / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) return `${Math.abs(diffDays)}d ago`;
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    if (diffDays < 14) return `in ${diffDays}d`;
-    const weeks = Math.round(diffDays / 7);
-    if (weeks < 8) return `in ${weeks}w`;
-    const months = Math.round(diffDays / 30);
-    return `in ${months}mo`;
-  };
+  const formatDateBadge = formatPhtDateBadge;
+  const formatRelativeTime = (dateStr: string) => formatPhtRelativeTime(dateStr, currentTimestamp);
+  const formatCountdown = (dateStr: string | null) => formatPhtCountdown(dateStr, currentTimestamp);
 
   const handleFilterChange = (filter: 'all' | 'movie' | 'tv' | 'game' | 'news') => {
     setSelectedFilter(filter);
@@ -197,6 +172,9 @@ export const RadarPage: React.FC<RadarPageProps> = ({
           </div>
 
           <div className="flex items-center gap-space-sm self-end sm:self-auto">
+            <span className="font-label-code text-[11px] text-secondary-fixed-dim bg-secondary-container/20 px-2 py-0.5 rounded-full border border-secondary-container/40">
+              GMT+8 PHT
+            </span>
             <span className="font-label-caps text-label-caps text-outline uppercase tracking-wider">
               Split Stream View
             </span>

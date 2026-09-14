@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Item } from '../lib/db';
 import { MonthlyCalendar } from './MonthlyCalendar';
+import { getPhtDateStr, getPhtDateOffset } from '../lib/timezone';
 
 interface ExplorerPageProps {
   items: Item[];
@@ -75,13 +76,12 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
     onSearchChange('');
   };
 
-  // Filtered and sorted items
+  // Filtered and sorted items in Philippine Time (GMT+8)
   const processedItems = useMemo(() => {
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const sevenDaysLaterStr = new Date(now.getTime() + 7 * 86400000).toISOString().split('T')[0];
-    const thirtyDaysLaterStr = new Date(now.getTime() + 30 * 86400000).toISOString().split('T')[0];
-    const thirtyDaysAgoStr = new Date(now.getTime() - 30 * 86400000).toISOString().split('T')[0];
+    const todayStr = getPhtDateStr();
+    const sevenDaysLaterStr = getPhtDateOffset(7);
+    const thirtyDaysLaterStr = getPhtDateOffset(30);
+    const thirtyDaysAgoStr = getPhtDateOffset(-30);
 
     return items
       .filter((item) => {

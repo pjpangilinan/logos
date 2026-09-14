@@ -1,4 +1,5 @@
 import type { Item } from './db';
+import { getPhtDateStr } from './timezone.ts';
 
 export interface CalendarDay {
   dateStr: string; // YYYY-MM-DD
@@ -8,13 +9,10 @@ export interface CalendarDay {
 }
 
 /**
- * Format a Date into YYYY-MM-DD local string.
+ * Format a Date into YYYY-MM-DD string in Philippine Time (GMT+8).
  */
 export function formatLocalDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return getPhtDateStr(date);
 }
 
 /**

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Item } from '../lib/db';
+import { getPhtDateStr } from '../lib/timezone';
 
 interface LibraryPageProps {
   items: Item[];
@@ -47,25 +48,27 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     });
   };
 
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => getPhtDateStr(), []);
 
   // Upcoming tracked items
   const upcomingTracked = useMemo(() => {
     return likedItems.filter((i) => i.date && i.date >= todayStr);
   }, [likedItems, todayStr]);
 
-  const [currentTimestamp] = useState(() => Date.now());
-
-  // Next drop countdown calculation
+  // Next drop countdown calculation in Philippine Time (GMT+8)
   const nextDropInfo = useMemo(() => {
     const sorted = [...upcomingTracked].sort((a, b) => a.date!.localeCompare(b.date!));
     if (sorted.length === 0) return { title: 'None pending', countdown: '--' };
     const nextItem = sorted[0];
-    const diffMs = new Date(nextItem.date!).getTime() - currentTimestamp;
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const targetDate = nextItem.date!.slice(0, 10);
+    if (targetDate === todayStr) return { title: nextItem.title, countdown: 'Today' };
+
+    const todayMs = new Date(`${todayStr}T00:00:00+08:00`).getTime();
+    const targetMs = new Date(`${targetDate}T00:00:00+08:00`).getTime();
+    const diffDays = Math.round((targetMs - todayMs) / (1000 * 60 * 60 * 24));
     const countdown = diffDays <= 0 ? 'Today' : `${diffDays}d left`;
     return { title: nextItem.title, countdown };
-  }, [upcomingTracked, currentTimestamp]);
+  }, [upcomingTracked, todayStr]);
 
   // Filtered tracked releases
   const displayedTracked = useMemo(() => {
@@ -164,7 +167,11 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
 
   const formatCountdownDays = (dateStr: string | null) => {
     if (!dateStr) return 'TBA';
-    const diff = Math.ceil((new Date(dateStr).getTime() - currentTimestamp) / (1000 * 60 * 60 * 24));
+    const targetDate = dateStr.slice(0, 10);
+    if (targetDate === todayStr) return 'TODAY';
+    const todayMs = new Date(`${todayStr}T00:00:00+08:00`).getTime();
+    const targetMs = new Date(`${targetDate}T00:00:00+08:00`).getTime();
+    const diff = Math.round((targetMs - todayMs) / (1000 * 60 * 60 * 24));
     if (diff <= 0) return 'TODAY';
     return `T-MINUS ${diff} DAYS`;
   };

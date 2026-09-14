@@ -36,25 +36,49 @@ export const RadarPage: React.FC<RadarPageProps> = ({
     });
   }, [items, selectedFilter, searchQuery]);
 
-  // New Arrivals: sorted by first_seen_at DESC
+  // New Arrivals: items that have actually released (never unreleased future items, never ancient retro items)
   const newArrivals = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
     return [...filteredItems]
-      .sort((a, b) => new Date(b.first_seen_at).getTime() - new Date(a.first_seen_at).getTime())
+      .filter((item) => {
+        // News items are published upon arrival
+        if (item.type === 'news') return true;
+        // Movies, TV, Games MUST have a release date that has already arrived (never unreleased future items)
+        if (!item.date || item.date > today) return false;
+        // Must be recent (released within the last 6 months, not ancient retro items)
+        if (item.date < sixMonthsAgo) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        // Sort by actual release date DESC (newest release first), fallback to first_seen_at
+        if (a.date && b.date && a.date !== b.date) {
+          return b.date.localeCompare(a.date);
+        }
+        return new Date(b.first_seen_at).getTime() - new Date(a.first_seen_at).getTime();
+      })
       .slice(0, 10);
   }, [filteredItems]);
 
-  // Upcoming Radar: strictly future/imminent releases sorted chronologically ASC
+  // Upcoming Radar: strictly future/imminent releases sorted chronologically ASC (news is not an upcoming release)
   const upcomingRadar = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     return filteredItems
-      .filter((i) => i.date && i.date >= today)
+      .filter((i) => i.type !== 'news' && i.date && i.date >= today)
       .sort((a, b) => a.date!.localeCompare(b.date!))
       .slice(0, 15);
   }, [filteredItems]);
 
-  // Popular & Trending items: strictly top 10, reactive to category filter and search
+  // Popular & Trending items: strictly top 10 current items, reactive to category filter and search
   const popularItems = useMemo(() => {
-    const pool = filteredItems.filter((it) => it.image && it.date);
+    const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const pool = filteredItems.filter((it) => {
+      if (!it.image) return false;
+      // Focus on current/recent/upcoming releases (exclude anything released over a year ago)
+      if (it.date && it.date < oneYearAgo) return false;
+      return true;
+    });
     const sorted = [...pool].sort((a, b) => {
       const typeScore = (t: string) => (t === 'movie' || t === 'tv' || t === 'game' ? 2 : 1);
       return typeScore(b.type) - typeScore(a.type);
@@ -203,7 +227,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
                 </h3>
               </div>
               <span className="font-label-code text-label-code text-outline uppercase">
-                First Seen Order
+                Recently Released
               </span>
             </div>
 
@@ -240,7 +264,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
                           {item.source} • {item.type}
                         </span>
                         <span className="font-label-caps text-label-caps text-outline uppercase flex-shrink-0">
-                          {formatRelativeTime(item.first_seen_at)}
+                          {formatRelativeTime(item.date || item.first_seen_at)}
                         </span>
                       </div>
 

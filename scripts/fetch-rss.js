@@ -98,7 +98,10 @@ async function fetchFeed(feed, upsertMany) {
   try {
     const feedData = await parser.parseURL(feed.url);
     const rawItems = feedData.items || [];
-    const normalizedItems = rawItems.map((item) => normalizeItem(feed, item));
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const normalizedItems = rawItems
+      .map((item) => normalizeItem(feed, item))
+      .filter((item) => !item.date || item.date >= thirtyDaysAgo);
 
     upsertMany(normalizedItems);
     console.log(`✓ [${feed.name}] Successfully fetched and upserted ${normalizedItems.length} items`);

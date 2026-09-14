@@ -134,11 +134,17 @@ async function main() {
 
   // 2. Movie: Trending Week (page 1)
   console.log('[TMDB] Fetching trending movies this week...');
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const cutoffDate = oneYearAgo.toISOString().split('T')[0];
+
   try {
     const data = await fetchJson('/trending/movie/week', { page: 1 });
     const results = data?.results || [];
     for (const item of results) {
       if (!item.id) continue;
+      // Skip classic/legacy movies older than 1 year trending due to memes or anniversaries
+      if (item.release_date && item.release_date < cutoffDate) continue;
       const normalized = normalizeMovie(item, movieGenres, tvGenres);
       itemsMap.set(normalized.id, normalized);
     }
@@ -203,6 +209,9 @@ async function main() {
           episodeDetail,
           episodeDetail?.['watch/providers']
         );
+        // Only keep TV shows with current or upcoming air dates (exclude shows ended over a year ago)
+        if (normalized.date && normalized.date < cutoffDate) return;
+
         itemsMap.set(normalized.id, normalized);
       })
     );
@@ -221,10 +230,19 @@ async function main() {
   }
 
   console.log(`[TMDB] Upserting ${items.length} items into database...`);
-  const { upsertMany, close } = openDb();
+  const { db, upsertMany, close } = openDb();
   try {
     upsertMany(items);
     console.log(`✓ [TMDB] Successfully upserted ${items.length} items.`);
+
+    // Prune legacy movies/TV with release dates older than 1 year (e.g. ancient movies that trended temporarily)
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const cutoff = oneYearAgo.toISOString().split('T')[0];
+    const pruned = db.prepare("DELETE FROM items WHERE (type = 'movie' OR type = 'tv') AND date IS NOT NULL AND date < ?").run(cutoff);
+    if (pruned.changes > 0) {
+      console.log(`[TMDB] Pruned ${pruned.changes} legacy movie/TV items released before ${cutoff}.`);
+    }
   } finally {
     close();
   }

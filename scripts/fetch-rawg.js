@@ -28,6 +28,18 @@ function getUpcomingDateRange() {
 }
 
 /**
+ * Returns date range string "<today-daysBack>,<today>" in YYYY-MM-DD format.
+ * @param {number} daysBack
+ * @returns {string}
+ */
+function getRecentDateRange(daysBack = 120) {
+  const today = new Date();
+  const past = new Date(today);
+  past.setDate(past.getDate() - daysBack);
+  return `${formatDate(past)},${formatDate(today)}`;
+}
+
+/**
  * Fetch a JSON endpoint from RAWG API with retry and rate limit pacing.
  * @param {string} endpoint
  * @param {Record<string, string | number>} params
@@ -130,10 +142,11 @@ async function main() {
     }
   }
 
-  // 2. Top rated recent (page 1)
+  // 2. Top rated recent releases (past 120 days)
   try {
-    console.log(`Fetching Top rated games (page 1)...`);
+    console.log(`Fetching Top rated recent games (page 1)...`);
     const data = await fetchRawg('/games', {
+      dates: getRecentDateRange(120),
       ordering: '-rating',
       page_size: 40,
       page: 1,
@@ -152,11 +165,12 @@ async function main() {
     throw err;
   }
 
-  // 3. Popular games (page 1)
+  // 3. Recently released games (past 60 days)
   try {
-    console.log(`Fetching Popular games (page 1)...`);
+    console.log(`Fetching Recently released games (page 1)...`);
     const data = await fetchRawg('/games', {
-      ordering: '-relevance',
+      dates: getRecentDateRange(60),
+      ordering: '-released',
       page_size: 40,
       page: 1,
     });
@@ -170,7 +184,7 @@ async function main() {
       }
     }
   } catch (err) {
-    console.error(`  Error during popular games fetch:`, err.message);
+    console.error(`  Error during recently released games fetch:`, err.message);
     throw err;
   }
 
@@ -202,11 +216,20 @@ async function main() {
   }
 
   console.log(`Upserting ${items.length} items into database...`);
-  const { upsertMany, close } = openDb();
+  const { db, upsertMany, close } = openDb();
 
   try {
     upsertMany(items);
     console.log(`✓ Successfully processed and upserted ${items.length} games.`);
+
+    // Prune legacy/retro games with release dates older than 1 year (keeps radar focused on current & upcoming)
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const cutoff = oneYearAgo.toISOString().split('T')[0];
+    const pruned = db.prepare("DELETE FROM items WHERE type = 'game' AND date IS NOT NULL AND date < ?").run(cutoff);
+    if (pruned.changes > 0) {
+      console.log(`[RAWG] Pruned ${pruned.changes} legacy games released before ${cutoff}.`);
+    }
   } finally {
     close();
   }

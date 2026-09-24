@@ -144,7 +144,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       <div className="max-w-[1440px] mx-auto flex flex-col gap-space-2xl">
         {/* Toast notification */}
         {statusMessage && (
-          <div className="fixed bottom-6 right-6 z-50 bg-secondary-container text-on-primary px-space-md py-space-sm rounded-xl shadow-2xl font-label-code text-body-sm flex items-center gap-2 animate-bounce">
+          <div className="fixed bottom-20 md:bottom-6 right-6 z-50 bg-secondary-container text-on-primary px-space-md py-space-sm rounded-xl shadow-2xl font-label-code text-body-sm flex items-center gap-2 animate-bounce">
             <span className="material-symbols-outlined text-[18px]">check_circle</span>
             <span>{statusMessage}</span>
           </div>
@@ -195,7 +195,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-space-md relative z-10">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-6 gap-space-md relative z-10">
             {/* Movies */}
             <div className="bg-dark-surface border border-dark-border/40 rounded-2xl p-space-lg flex flex-col justify-between gap-space-md">
               <div className="flex items-center justify-between">
@@ -275,7 +275,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
 
             {/* Total Storage Summary */}
-            <div className="bg-dark-surface border border-dark-border/40 rounded-2xl p-space-lg lg:col-span-2 flex flex-col justify-between gap-space-md">
+            <div className="bg-dark-surface border border-dark-border/40 rounded-2xl p-space-lg col-span-2 lg:col-span-2 flex flex-col justify-between gap-space-md">
               <div className="flex items-center justify-between">
                 <span className="font-label-code text-[11px] text-secondary-fixed-dim uppercase tracking-wider">
                   AGGREGATE STORAGE

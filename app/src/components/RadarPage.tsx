@@ -44,11 +44,13 @@ export const RadarPage: React.FC<RadarPageProps> = ({
   }, [items, selectedFilter, searchQuery]);
 
   // New Arrivals: items that have actually released in PHT (never unreleased future items, never ancient retro items)
+  // Preserves listings and data gathered from today and the day before
   const newArrivals = useMemo(() => {
     const today = getPhtDateStr();
+    const dayBefore = getPhtDateOffset(-1);
     const sixMonthsAgo = getPhtDateOffset(-180);
 
-    return [...filteredItems]
+    const pool = [...filteredItems]
       .filter((item) => {
         // News items are published upon arrival
         if (item.type === 'news') return true;
@@ -64,17 +66,25 @@ export const RadarPage: React.FC<RadarPageProps> = ({
           return b.date.localeCompare(a.date);
         }
         return new Date(b.first_seen_at).getTime() - new Date(a.first_seen_at).getTime();
-      })
-      .slice(0, 10);
+      });
+
+    // Guarantee that all releases and data gathered from today and the day before are kept
+    const todayAndYesterday = pool.filter((item) => {
+      const d = (item.date || item.first_seen_at).slice(0, 10);
+      return d >= dayBefore;
+    });
+
+    return pool.slice(0, Math.max(15, Math.min(30, todayAndYesterday.length + 5)));
   }, [filteredItems]);
 
-  // Upcoming Radar: strictly future/imminent releases in PHT sorted chronologically ASC (news is not an upcoming release)
+  // Upcoming Radar: releases from yesterday/today onwards in PHT sorted chronologically ASC (news is not an upcoming release)
+  // Keeps today and the day before listings so imminent/recent drops remain prominent
   const upcomingRadar = useMemo(() => {
-    const today = getPhtDateStr();
+    const dayBefore = getPhtDateOffset(-1);
     return filteredItems
-      .filter((i) => i.type !== 'news' && i.date && i.date >= today)
+      .filter((i) => i.type !== 'news' && i.date && i.date >= dayBefore)
       .sort((a, b) => a.date!.localeCompare(b.date!))
-      .slice(0, 15);
+      .slice(0, 20);
   }, [filteredItems]);
 
   // Popular & Trending items: strictly top 10 current items, reactive to category filter and search
@@ -117,11 +127,11 @@ export const RadarPage: React.FC<RadarPageProps> = ({
     <div className="w-full bg-dark-bg text-on-primary min-h-screen pb-space-4xl">
       {/* ─── Filter Control Bar ────────────────────────────────────────── */}
       <section className="w-full max-w-[1440px] mx-auto px-gutter pt-space-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md pb-space-md border-b border-dark-border/60">
-          <div className="flex items-center gap-space-xs flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm sm:gap-space-md pb-space-sm sm:pb-space-md border-b border-dark-border/60">
+          <div className="flex items-center gap-space-xs overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap pb-1 sm:pb-0 -mx-gutter px-gutter sm:mx-0 sm:px-0">
             <button
               onClick={() => handleFilterChange('all')}
-              className={`px-space-md py-2 rounded-full font-label-code text-label-code transition-all ${
+              className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 ${
                 selectedFilter === 'all'
                   ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
                   : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
@@ -131,7 +141,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
             </button>
             <button
               onClick={() => handleFilterChange('movie')}
-              className={`px-space-md py-2 rounded-full font-label-code text-label-code transition-all ${
+              className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 ${
                 selectedFilter === 'movie'
                   ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
                   : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
@@ -141,7 +151,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
             </button>
             <button
               onClick={() => handleFilterChange('tv')}
-              className={`px-space-md py-2 rounded-full font-label-code text-label-code transition-all ${
+              className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 ${
                 selectedFilter === 'tv'
                   ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
                   : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
@@ -151,7 +161,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
             </button>
             <button
               onClick={() => handleFilterChange('game')}
-              className={`px-space-md py-2 rounded-full font-label-code text-label-code transition-all ${
+              className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 ${
                 selectedFilter === 'game'
                   ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
                   : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
@@ -161,7 +171,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
             </button>
             <button
               onClick={() => handleFilterChange('news')}
-              className={`px-space-md py-2 rounded-full font-label-code text-label-code transition-all ${
+              className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 ${
                 selectedFilter === 'news'
                   ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
                   : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
@@ -171,14 +181,14 @@ export const RadarPage: React.FC<RadarPageProps> = ({
             </button>
           </div>
 
-          <div className="flex items-center gap-space-sm self-end sm:self-auto">
-            <span className="font-label-code text-[11px] text-secondary-fixed-dim bg-secondary-container/20 px-2 py-0.5 rounded-full border border-secondary-container/40">
+          <div className="flex items-center gap-space-sm self-start sm:self-auto">
+            <span className="font-label-code text-[10px] sm:text-[11px] text-secondary-fixed-dim bg-secondary-container/20 px-2 py-0.5 rounded-full border border-secondary-container/40">
               GMT+8 PHT
             </span>
-            <span className="font-label-caps text-label-caps text-outline uppercase tracking-wider">
+            <span className="font-label-caps text-label-caps text-outline uppercase tracking-wider hidden sm:inline">
               Split Stream View
             </span>
-            <div className="bg-dark-surface border border-dark-border p-1 rounded-lg flex items-center gap-1">
+            <div className="bg-dark-surface border border-dark-border p-1 rounded-lg hidden sm:flex items-center gap-1">
               <button
                 className="p-1 rounded bg-deep-dark text-secondary-fixed-dim"
                 title="Split Columns"
@@ -219,9 +229,9 @@ export const RadarPage: React.FC<RadarPageProps> = ({
                 return (
                   <div
                     key={item.id}
-                    className="group rounded-[20px] bg-dark-surface p-space-md flex items-center gap-space-md hover:bg-deep-dark border border-dark-border/40 hover:border-dark-border transition-all duration-300"
+                    className="group rounded-[20px] bg-dark-surface p-3 sm:p-space-md flex items-center gap-3 sm:gap-space-md hover:bg-deep-dark border border-dark-border/40 hover:border-dark-border transition-all duration-300"
                   >
-                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden flex-shrink-0 bg-dark-bg border border-dark-border/40">
+                    <div className="relative w-16 h-16 sm:w-24 sm:h-24 rounded-xl overflow-hidden flex-shrink-0 bg-dark-bg border border-dark-border/40">
                       {item.image ? (
                         <img
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -330,32 +340,32 @@ export const RadarPage: React.FC<RadarPageProps> = ({
                 const dateBadge = formatDateBadge(item.date);
                 const liked = isLiked(item.id);
                 const countdown = formatCountdown(item.date);
-                const isImminent = countdown === 'Today' || countdown === 'Tomorrow';
+                const isImminent = countdown === 'Today' || countdown === 'Tomorrow' || countdown === 'Yesterday';
 
                 return (
                   <div
                     key={item.id}
-                    className="group rounded-[20px] bg-dark-surface p-space-md hover:bg-deep-dark border border-dark-border/40 hover:border-dark-border transition-all duration-300 flex items-center justify-between gap-space-md"
+                    className="group rounded-[20px] bg-dark-surface p-3 sm:p-space-md hover:bg-deep-dark border border-dark-border/40 hover:border-dark-border transition-all duration-300 flex items-center justify-between gap-2 sm:gap-space-md"
                   >
-                    <div className="flex items-center gap-space-md min-w-0">
-                      <div className="w-12 h-12 rounded-xl bg-dark-bg border border-dark-border/60 flex flex-col items-center justify-center text-center flex-shrink-0">
-                        <span className="font-label-code text-[11px] text-tertiary-fixed-dim uppercase leading-none font-bold">
+                    <div className="flex items-center gap-2.5 sm:gap-space-md min-w-0">
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-dark-bg border border-dark-border/60 flex flex-col items-center justify-center text-center flex-shrink-0">
+                        <span className="font-label-code text-[10px] sm:text-[11px] text-tertiary-fixed-dim uppercase leading-none font-bold">
                           {dateBadge.month}
                         </span>
-                        <span className="font-headline-sm text-[16px] text-on-primary leading-tight font-bold">
+                        <span className="font-headline-sm text-sm sm:text-[16px] text-on-primary leading-tight font-bold">
                           {dateBadge.day}
                         </span>
                       </div>
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-label-code text-label-code text-secondary-fixed-dim uppercase truncate">
+                          <span className="font-label-code text-[10px] sm:text-label-code text-secondary-fixed-dim uppercase truncate">
                             {item.source} • {item.type}
                           </span>
                           {item.date && (
                             <>
-                              <span className="text-outline text-[10px]">•</span>
-                              <span className="font-label-code text-[11px] text-outline flex-shrink-0">
+                              <span className="text-outline text-[10px] hidden xs:inline">•</span>
+                              <span className="font-label-code text-[10px] sm:text-[11px] text-outline flex-shrink-0 hidden xs:inline">
                                 {item.date}
                               </span>
                             </>
@@ -365,7 +375,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
                           href={item.url || '#'}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-headline-sm text-[16px] leading-tight text-on-primary mt-0.5 hover:text-secondary-fixed-dim transition-colors truncate block"
+                          className="font-headline-sm text-sm sm:text-[16px] leading-tight text-on-primary mt-0.5 hover:text-secondary-fixed-dim transition-colors truncate block"
                         >
                           {item.title}
                         </a>
@@ -384,9 +394,9 @@ export const RadarPage: React.FC<RadarPageProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-space-sm flex-shrink-0">
+                    <div className="flex items-center gap-1.5 sm:gap-space-sm flex-shrink-0">
                       <span
-                        className={`font-label-code text-label-code font-bold px-2.5 py-1 rounded-full hidden sm:inline-block border ${
+                        className={`font-label-code text-[10px] sm:text-label-code font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border whitespace-nowrap ${
                           isImminent
                             ? 'bg-secondary-container/25 text-secondary-fixed-dim border-secondary-container/50'
                             : 'bg-dark-bg text-outline-variant border-dark-border/40'

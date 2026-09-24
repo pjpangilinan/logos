@@ -106,7 +106,7 @@ export function ItemCard({
               onDismiss();
             }}
             title="Dismiss / hide this item"
-            className="p-1.5 rounded-full bg-gray-950/70 text-gray-400 hover:text-gray-200 hover:bg-gray-800/90 backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+            className="p-1.5 rounded-full bg-gray-950/70 text-gray-400 hover:text-gray-200 hover:bg-gray-800/90 backdrop-blur-md transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

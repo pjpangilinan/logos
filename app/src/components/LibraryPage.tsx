@@ -66,7 +66,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     const todayMs = new Date(`${todayStr}T00:00:00+08:00`).getTime();
     const targetMs = new Date(`${targetDate}T00:00:00+08:00`).getTime();
     const diffDays = Math.round((targetMs - todayMs) / (1000 * 60 * 60 * 24));
-    const countdown = diffDays <= 0 ? 'Today' : `${diffDays}d left`;
+    const countdown = diffDays <= 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `${diffDays}d left`;
     return { title: nextItem.title, countdown };
   }, [upcomingTracked, todayStr]);
 
@@ -172,7 +172,10 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     const todayMs = new Date(`${todayStr}T00:00:00+08:00`).getTime();
     const targetMs = new Date(`${targetDate}T00:00:00+08:00`).getTime();
     const diff = Math.round((targetMs - todayMs) / (1000 * 60 * 60 * 24));
-    if (diff <= 0) return 'TODAY';
+    if (diff === 0) return 'TODAY';
+    if (diff === -1) return 'RELEASED YESTERDAY';
+    if (diff < 0) return `RELEASED ${Math.abs(diff)}D AGO`;
+    if (diff === 1) return 'TOMORROW';
     return `T-MINUS ${diff} DAYS`;
   };
 
@@ -354,10 +357,10 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
             </div>
 
             {activeTab === 'tracked' && (
-              <div className="flex items-center gap-1 bg-deep-dark p-1 rounded-xl border border-dark-border/60">
+              <div className="flex items-center gap-1 bg-deep-dark p-1 rounded-xl border border-dark-border/60 overflow-x-auto no-scrollbar flex-nowrap">
                 <button
                   onClick={() => setFilterType('all')}
-                  className={`px-space-sm py-1 rounded-lg font-label-caps text-label-caps uppercase transition-all ${
+                  className={`px-space-sm py-1 rounded-lg font-label-caps text-label-caps uppercase whitespace-nowrap transition-all flex-shrink-0 ${
                     filterType === 'all'
                       ? 'bg-secondary-container text-on-primary font-bold'
                       : 'text-outline hover:text-on-primary'
@@ -367,7 +370,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
                 </button>
                 <button
                   onClick={() => setFilterType('cinema')}
-                  className={`px-space-sm py-1 rounded-lg font-label-caps text-label-caps uppercase transition-all ${
+                  className={`px-space-sm py-1 rounded-lg font-label-caps text-label-caps uppercase whitespace-nowrap transition-all flex-shrink-0 ${
                     filterType === 'cinema'
                       ? 'bg-secondary-container text-on-primary font-bold'
                       : 'text-outline hover:text-on-primary'
@@ -377,7 +380,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
                 </button>
                 <button
                   onClick={() => setFilterType('games')}
-                  className={`px-space-sm py-1 rounded-lg font-label-caps text-label-caps uppercase transition-all ${
+                  className={`px-space-sm py-1 rounded-lg font-label-caps text-label-caps uppercase whitespace-nowrap transition-all flex-shrink-0 ${
                     filterType === 'games'
                       ? 'bg-secondary-container text-on-primary font-bold'
                       : 'text-outline hover:text-on-primary'

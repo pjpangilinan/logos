@@ -153,7 +153,7 @@ export const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                     setSelectedDateStr(isSelected ? null : cell.dateStr);
                   }
                 }}
-                className={`min-h-[105px] sm:min-h-[120px] p-1.5 sm:p-2 rounded-xl flex flex-col justify-between border transition-all duration-200 ${
+                className={`min-h-[58px] sm:min-h-[120px] p-1 sm:p-2 rounded-xl flex flex-col justify-between border transition-all duration-200 ${
                   cell.inCurrentMonth
                     ? 'bg-deep-dark/90 text-on-primary'
                     : 'bg-dark-bg/40 text-outline/40 border-dark-border/20'
@@ -170,9 +170,9 @@ export const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                 }`}
               >
                 {/* Day Number Header */}
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-0.5 sm:mb-1">
                   <span
-                    className={`font-label-code text-[11px] sm:text-[12px] font-bold rounded-md px-1.5 py-0.2 ${
+                    className={`font-label-code text-[10px] sm:text-[12px] font-bold rounded-md px-1 sm:px-1.5 py-0.2 ${
                       cell.isToday
                         ? 'bg-secondary-container text-on-primary shadow-sm'
                         : cell.inCurrentMonth
@@ -184,14 +184,37 @@ export const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                   </span>
 
                   {hasItems && (
-                    <span className="font-label-code text-[10px] text-outline-variant bg-dark-bg px-1 rounded border border-dark-border/40">
+                    <span className="font-label-code text-[9px] sm:text-[10px] text-outline-variant bg-dark-bg px-1 rounded border border-dark-border/40">
                       {dayItems.length}
                     </span>
                   )}
                 </div>
 
-                {/* Day item chips */}
-                <div className="flex flex-col gap-1 overflow-hidden flex-grow">
+                {/* Mobile: compact release dots */}
+                <div className="flex sm:hidden items-center justify-center gap-1 flex-wrap mt-auto pt-0.5">
+                  {dayItems.slice(0, 3).map((it) => (
+                    <span
+                      key={it.id}
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        it.type === 'movie'
+                          ? 'bg-blue-400'
+                          : it.type === 'tv'
+                          ? 'bg-purple-400'
+                          : it.type === 'game'
+                          ? 'bg-emerald-400'
+                          : 'bg-amber-400'
+                      }`}
+                    />
+                  ))}
+                  {dayItems.length > 3 && (
+                    <span className="text-[8px] font-label-code text-outline leading-none">
+                      +{dayItems.length - 3}
+                    </span>
+                  )}
+                </div>
+
+                {/* Desktop: Day item chips */}
+                <div className="hidden sm:flex flex-col gap-1 overflow-hidden flex-grow">
                   {dayItems.slice(0, 3).map((it) => (
                     <div
                       key={it.id}

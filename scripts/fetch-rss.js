@@ -112,7 +112,7 @@ async function fetchFeed(feed, upsertMany) {
   }
 }
 
-const MAX_NEWS_ITEMS = 120;
+const MAX_NEWS_ITEMS = 250;
 
 async function main() {
   console.log(`Starting RSS feed fetch for ${FEEDS.length} feeds...`);

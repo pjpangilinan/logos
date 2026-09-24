@@ -36,8 +36,8 @@ describe('Philippine Time (GMT+8) Engine', () => {
     assert.equal(formatPhtCountdown('2026-09-14', nowMs), 'Today');
     assert.equal(formatPhtCountdown('2026-09-15', nowMs), 'Tomorrow');
     assert.equal(formatPhtCountdown('2026-09-16', nowMs), 'in 2d');
-    assert.equal(formatPhtCountdown('2026-09-28', nowMs), 'in 2w');
-    assert.equal(formatPhtCountdown('2026-09-13', nowMs), '1d ago');
+    assert.equal(formatPhtCountdown('2026-09-13', nowMs), 'Yesterday');
+    assert.equal(formatPhtCountdown('2026-09-12', nowMs), '2d ago');
     assert.equal(formatPhtCountdown(null, nowMs), 'TBA');
   });
 

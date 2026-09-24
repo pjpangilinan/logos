@@ -92,7 +92,7 @@ export function openDb(dbPath = DB_PATH) {
    * Keeps the newest maxItems sorted by first_seen_at DESC, date DESC.
    * @param {number} maxItems
    */
-  function pruneNews(maxItems = 120) {
+  function pruneNews(maxItems = 250) {
     const countRow = db.prepare("SELECT COUNT(*) as count FROM items WHERE type = 'news'").get();
     const countBefore = countRow ? countRow.count : 0;
     if (countBefore <= maxItems) {

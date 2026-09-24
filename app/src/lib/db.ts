@@ -1,5 +1,5 @@
 import initSqlJs, { type Database as SqlJsDatabase } from 'sql.js';
-import { getPhtDateStr } from './timezone.ts';
+import { getPhtDateOffset } from './timezone.ts';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -167,7 +167,7 @@ export function getInitialItems(): Item[] {
       SELECT * FROM items WHERE type != 'news'
       UNION ALL
       SELECT * FROM (
-        SELECT * FROM items WHERE type = 'news' ORDER BY first_seen_at DESC, date DESC LIMIT 120
+        SELECT * FROM items WHERE type = 'news' ORDER BY first_seen_at DESC, date DESC LIMIT 250
       )
     )
     ORDER BY first_seen_at DESC
@@ -224,13 +224,13 @@ export function getNewItemsSince(since: string): Item[] {
 }
 
 /**
- * Get upcoming items (date in the future in PHT, excluding news), sorted by release date ascending.
+ * Get upcoming items (date from yesterday onwards in PHT, excluding news), sorted by release date ascending.
  */
 export function getUpcoming(): Item[] {
-  const today = getPhtDateStr();
+  const dayBefore = getPhtDateOffset(-1);
   return query(
-    "SELECT * FROM items WHERE type != 'news' AND date >= $today ORDER BY date ASC",
-    { $today: today }
+    "SELECT * FROM items WHERE type != 'news' AND date >= $dayBefore ORDER BY date ASC",
+    { $dayBefore: dayBefore }
   );
 }
 

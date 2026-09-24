@@ -231,8 +231,8 @@ function App() {
         onClose={() => setShortcutsOpen(false)}
       />
 
-      {/* ─── Main Content Canvas (offset for fixed header) ──────────── */}
-      <main className="flex-grow pt-16">
+      {/* ─── Main Content Canvas (offset for fixed header and mobile bottom nav) ──── */}
+      <main className="flex-grow pt-16 pb-20 md:pb-0">
         {activePage === 'radar' && (
           <RadarPage
             items={activeItems}
@@ -283,7 +283,7 @@ function App() {
 
       {/* ─── Toast Feedback Strip ────────────────────────────────────── */}
       {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-dark-surface border border-secondary-container text-on-primary px-space-md py-2.5 rounded-full shadow-2xl flex items-center gap-space-sm text-body-sm animate-fade-in">
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-dark-surface border border-secondary-container text-on-primary px-space-md py-2.5 rounded-full shadow-2xl flex items-center gap-space-sm text-body-sm animate-fade-in">
           <span>{toastMessage}</span>
           {lastDismissedId && (
             <button

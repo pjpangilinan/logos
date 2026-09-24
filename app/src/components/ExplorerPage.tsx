@@ -33,6 +33,7 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
   const [windowFilter, setWindowFilter] = useState<WindowFilter>('all');
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Collect top genres from all items
   const availableGenres = useMemo(() => {
@@ -79,6 +80,7 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
   // Filtered and sorted items in Philippine Time (GMT+8)
   const processedItems = useMemo(() => {
     const todayStr = getPhtDateStr();
+    const dayBeforeStr = getPhtDateOffset(-1);
     const sevenDaysLaterStr = getPhtDateOffset(7);
     const thirtyDaysLaterStr = getPhtDateOffset(30);
     const thirtyDaysAgoStr = getPhtDateOffset(-30);
@@ -103,9 +105,9 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
           if (!matchTitle && !matchTag && !matchSource) return false;
         }
 
-        // Release window filter
+        // Release window filter - includes day before for 'this-week' to preserve yesterday releases
         if (windowFilter === 'this-week') {
-          if (!item.date || item.date < todayStr || item.date > sevenDaysLaterStr) return false;
+          if (!item.date || item.date < dayBeforeStr || item.date > sevenDaysLaterStr) return false;
         } else if (windowFilter === 'next-30') {
           if (!item.date || item.date < todayStr || item.date > thirtyDaysLaterStr) return false;
         } else if (windowFilter === 'past-30') {
@@ -154,7 +156,7 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
         <div className="max-w-[1440px] mx-auto px-gutter pt-space-xl pb-space-lg">
           {/* Sub-Navigation Category Tabs */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
-            <div className="flex items-center gap-space-xs p-1 bg-dark-surface rounded-full border border-dark-border max-w-fit flex-wrap">
+            <div className="flex items-center gap-space-xs p-1 bg-dark-surface rounded-full border border-dark-border max-w-full overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap pb-1 sm:pb-1">
               <button
                 onClick={() => handleCategoryChange('all')}
                 className={`flex items-center gap-space-xs px-space-md py-1.5 rounded-full font-headline-sm text-label-code transition-all ${
@@ -328,9 +330,34 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
 
       {/* ─── Main Content Layout ───────────────────────────────────────── */}
       <div className="max-w-[1440px] mx-auto px-gutter py-space-xl">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-md lg:gap-space-xl items-start">
+          {/* Mobile Filter Toggle Accordion Button */}
+          <div className="lg:hidden w-full col-span-1">
+            <button
+              onClick={() => setMobileFiltersOpen((prev) => !prev)}
+              className="w-full flex items-center justify-between bg-dark-surface p-3.5 rounded-2xl border border-dark-border/80 shadow-md text-on-primary transition-colors hover:border-secondary-container/50"
+              type="button"
+            >
+              <div className="flex items-center gap-2 font-headline-sm text-sm">
+                <span className="material-symbols-outlined text-secondary text-[20px]">tune</span>
+                <span>Filters & Genres</span>
+                <span className="font-label-code text-[11px] bg-deep-dark border border-dark-border/40 text-outline px-2 py-0.5 rounded-full">
+                  {processedItems.length} matching
+                </span>
+                {selectedSources.length + selectedGenres.length + (windowFilter !== 'all' ? 1 : 0) > 0 && (
+                  <span className="font-label-code text-[10px] bg-secondary-container text-on-primary px-1.5 py-0.5 rounded-full font-bold">
+                    {selectedSources.length + selectedGenres.length + (windowFilter !== 'all' ? 1 : 0)} active
+                  </span>
+                )}
+              </div>
+              <span className="material-symbols-outlined text-[20px] text-outline">
+                {mobileFiltersOpen ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+          </div>
+
           {/* Left Filter Panel (Sidebar 3 cols) */}
-          <aside className="lg:col-span-3 w-full flex flex-col gap-space-md">
+          <aside className={`lg:col-span-3 w-full flex-col gap-space-md ${mobileFiltersOpen ? 'flex' : 'hidden lg:flex'}`}>
             <div className="bg-dark-surface rounded-[22px] p-space-lg border border-dark-border/60 shadow-xl flex flex-col gap-space-lg">
               <div className="flex items-center justify-between pb-space-xs border-b border-dark-border/40">
                 <div className="flex items-center gap-2">
@@ -582,15 +609,15 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
 
             {/* Timeline View */}
             {viewMode === 'timeline' && processedItems.length > 0 && (
-              <div className="flex flex-col gap-3 relative before:absolute before:left-6 before:top-4 before:bottom-4 before:w-[2px] before:bg-dark-border">
+              <div className="flex flex-col gap-3 relative before:absolute before:left-4 sm:before:left-6 before:top-4 before:bottom-4 before:w-[2px] before:bg-dark-border">
                 {processedItems.map((item) => {
                   const liked = isLiked(item.id);
                   return (
                     <div
                       key={item.id}
-                      className="relative pl-14 group flex flex-col sm:flex-row sm:items-center justify-between gap-space-md p-space-md rounded-[18px] bg-dark-surface hover:bg-deep-dark border border-dark-border/40 transition-all"
+                      className="relative pl-9 sm:pl-14 group flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm sm:gap-space-md p-3 sm:p-space-md rounded-[18px] bg-dark-surface hover:bg-deep-dark border border-dark-border/40 transition-all"
                     >
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-deep-dark border-2 border-secondary-container group-hover:bg-secondary-container transition-colors"></div>
+                      <div className="absolute left-2.5 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-deep-dark border-2 border-secondary-container group-hover:bg-secondary-container transition-colors"></div>
 
                       <div className="flex items-center gap-space-md min-w-0">
                         {item.image && (

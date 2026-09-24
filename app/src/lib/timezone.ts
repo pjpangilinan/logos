@@ -82,6 +82,7 @@ export function formatPhtCountdown(dateStr: string | null, nowMs: number = Date.
   const targetMidnight = new Date(`${targetDate}T00:00:00+08:00`).getTime();
   const diffDays = Math.round((targetMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
 
+  if (diffDays === -1) return 'Yesterday';
   if (diffDays < 0) return `${Math.abs(diffDays)}d ago`;
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Tomorrow';

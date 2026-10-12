@@ -88,34 +88,55 @@ export function openDb(dbPath = DB_PATH) {
   }
 
   /**
-   * Prune older news items to avoid unbounded RSS accumulation.
-   * Keeps the newest maxItems sorted by first_seen_at DESC, date DESC.
+   * Prune older news items to avoid unbounded RSS accumulation and single-source flooding.
+   * Keeps at most 15 items per individual RSS source, and caps total news to maxItems.
    * @param {number} maxItems
+   * @param {number} maxPerSource
    */
-  function pruneNews(maxItems = 250) {
-    const countRow = db.prepare("SELECT COUNT(*) as count FROM items WHERE type = 'news'").get();
-    const countBefore = countRow ? countRow.count : 0;
-    if (countBefore <= maxItems) {
-      return 0;
+  function pruneNews(maxItems = 250, maxPerSource = 15) {
+    let prunedChanges = 0;
+
+    // 1. Delete rows exceeding maxPerSource for each RSS source
+    const sources = db.prepare("SELECT DISTINCT source FROM items WHERE type = 'news'").all();
+    for (const { source } of sources) {
+      const pruneSourceStmt = db.prepare(`
+        DELETE FROM items
+        WHERE type = 'news' AND source = ?
+          AND id NOT IN (
+            SELECT id FROM items
+            WHERE type = 'news' AND source = ?
+            ORDER BY date DESC, first_seen_at DESC
+            LIMIT ?
+          )
+      `);
+      const res = pruneSourceStmt.run(source, source, maxPerSource);
+      prunedChanges += res.changes;
     }
 
-    const stmt = db.prepare(`
-      DELETE FROM items 
-      WHERE type = 'news' 
-        AND id NOT IN (
-          SELECT id FROM items 
-          WHERE type = 'news' 
-          ORDER BY first_seen_at DESC, date DESC 
-          LIMIT ?
-        )
-    `);
-    const result = stmt.run(maxItems);
+    // 2. Cap total news to maxItems
+    const countRow = db.prepare("SELECT COUNT(*) as count FROM items WHERE type = 'news'").get();
+    const countBefore = countRow ? countRow.count : 0;
+    if (countBefore > maxItems) {
+      const stmt = db.prepare(`
+        DELETE FROM items 
+        WHERE type = 'news' 
+          AND id NOT IN (
+            SELECT id FROM items 
+            WHERE type = 'news' 
+            ORDER BY first_seen_at DESC, date DESC 
+            LIMIT ?
+          )
+      `);
+      const result = stmt.run(maxItems);
+      prunedChanges += result.changes;
+    }
+
     try {
       db.exec('VACUUM;');
     } catch {
       // ignore
     }
-    return result.changes;
+    return prunedChanges;
   }
 
   function close() {

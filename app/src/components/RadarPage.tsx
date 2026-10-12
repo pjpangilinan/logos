@@ -7,6 +7,7 @@ import {
   formatPhtRelativeTime,
   formatPhtCountdown,
 } from '../lib/timezone';
+import { matchItemSearch } from '../lib/search';
 
 interface RadarPageProps {
   items: Item[];
@@ -26,22 +27,30 @@ export const RadarPage: React.FC<RadarPageProps> = ({
   searchQuery,
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'movie' | 'tv' | 'game' | 'news'>('all');
+  const [selectedSource, setSelectedSource] = useState<string>('all');
   const [recPage, setRecPage] = useState(0);
 
-  // Filter items by search query and category pill
+  // Available sources based on current items
+  const availableSources = useMemo(() => {
+    const countsMap = new Map<string, number>();
+    for (const item of items) {
+      if (selectedFilter !== 'all' && item.type !== selectedFilter) continue;
+      countsMap.set(item.source, (countsMap.get(item.source) || 0) + 1);
+    }
+    return Array.from(countsMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([source, count]) => ({ source, count }));
+  }, [items, selectedFilter]);
+
+  // Filter items by search query, category pill, and source filter
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       if (selectedFilter !== 'all' && item.type !== selectedFilter) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchTitle = item.title.toLowerCase().includes(q);
-        const matchTag = item.tags.some((t) => t.toLowerCase().includes(q));
-        const matchSource = item.source.toLowerCase().includes(q);
-        if (!matchTitle && !matchTag && !matchSource) return false;
-      }
+      if (selectedSource !== 'all' && item.source !== selectedSource) return false;
+      if (searchQuery.trim() && !matchItemSearch(item, searchQuery)) return false;
       return true;
     });
-  }, [items, selectedFilter, searchQuery]);
+  }, [items, selectedFilter, selectedSource, searchQuery]);
 
   // New Arrivals: items that have actually released in PHT (never unreleased future items, never ancient retro items)
   // Preserves listings and data gathered from today and the day before
@@ -87,21 +96,56 @@ export const RadarPage: React.FC<RadarPageProps> = ({
       .slice(0, 20);
   }, [filteredItems]);
 
-  // Popular & Trending items: strictly top 10 current items, reactive to category filter and search
+  // Popular & Trending items: strictly movies/TV/games (NEVER news).
+  // Prioritizes:
+  // 1. Tag richness / platform presence
+  // 2. Imminent releases (releasing in next 30 days)
+  // 3. Chronological recency
   const popularItems = useMemo(() => {
-    const oneYearAgo = getPhtDateOffset(-365);
-    const pool = filteredItems.filter((it) => {
+    const today = getPhtDateStr();
+    const imminentCutoff = getPhtDateOffset(30);
+    const pastCutoff = getPhtDateOffset(-90);
+
+    // Filter out news completely from Popular & Trending
+    const entertainmentPool = items.filter((it) => {
+      if (it.type === 'news') return false;
       if (!it.image) return false;
-      // Focus on current/recent/upcoming releases (exclude anything released over a year ago)
-      if (it.date && it.date < oneYearAgo) return false;
+      if (selectedFilter !== 'all' && selectedFilter !== 'news' && it.type !== selectedFilter) return false;
+      if (searchQuery.trim() && !matchItemSearch(it, searchQuery)) return false;
       return true;
     });
-    const sorted = [...pool].sort((a, b) => {
-      const typeScore = (t: string) => (t === 'movie' || t === 'tv' || t === 'game' ? 2 : 1);
-      return typeScore(b.type) - typeScore(a.type);
+
+    const scored = entertainmentPool.map((it) => {
+      let score = 0;
+
+      // Platform & tag richness proxy for popularity/production scale
+      score += Math.min(it.tags.length * 3, 25);
+
+      // Imminent releases (releasing within the next 30 days) get highest excitement boost
+      if (it.date) {
+        if (it.date >= today && it.date <= imminentCutoff) {
+          // Drops very soon (e.g. within 7 days = +40, within 30 days = +30)
+          const daysAway = (new Date(it.date).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24);
+          score += Math.max(10, 45 - Math.round(daysAway));
+        } else if (it.date < today && it.date >= pastCutoff) {
+          // Freshly dropped in last 90 days
+          score += 20;
+        } else if (it.date > imminentCutoff) {
+          // Future anticipation
+          score += 10;
+        }
+      }
+
+      return { item: it, score };
     });
-    const candidateList = sorted.length > 0 ? sorted : filteredItems;
-    const top10 = candidateList.slice(0, 10);
+
+    scored.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.item.date && b.item.date) return a.item.date.localeCompare(b.item.date);
+      return new Date(b.item.first_seen_at).getTime() - new Date(a.item.first_seen_at).getTime();
+    });
+
+    const top10 = scored.slice(0, 10).map((s) => s.item);
     const pageSize = 5;
     const maxPage = Math.max(0, Math.ceil(top10.length / pageSize) - 1);
     const clampedPage = Math.min(recPage, maxPage);
@@ -111,7 +155,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
       currentPage: clampedPage,
       totalCount: top10.length,
     };
-  }, [filteredItems, recPage]);
+  }, [items, selectedFilter, searchQuery, recPage]);
 
   const [currentTimestamp] = useState(() => Date.now());
   const formatDateBadge = formatPhtDateBadge;
@@ -120,6 +164,7 @@ export const RadarPage: React.FC<RadarPageProps> = ({
 
   const handleFilterChange = (filter: 'all' | 'movie' | 'tv' | 'game' | 'news') => {
     setSelectedFilter(filter);
+    setSelectedSource('all');
     setRecPage(0);
   };
 
@@ -127,76 +172,102 @@ export const RadarPage: React.FC<RadarPageProps> = ({
     <div className="w-full bg-dark-bg text-on-primary min-h-screen pb-space-4xl">
       {/* ─── Filter Control Bar ────────────────────────────────────────── */}
       <section className="w-full max-w-[1440px] mx-auto px-gutter pt-space-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm sm:gap-space-md pb-space-sm sm:pb-space-md border-b border-dark-border/60">
-          <div className="flex items-center gap-space-xs overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap pb-1 sm:pb-0 -mx-gutter px-gutter sm:mx-0 sm:px-0">
-            <button
-              onClick={() => handleFilterChange('all')}
-              className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 ${
-                selectedFilter === 'all'
-                  ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
-                  : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
-              }`}
-            >
-              All <span className="opacity-75 ml-1">({items.length})</span>
-            </button>
-            <button
-              onClick={() => handleFilterChange('movie')}
-              className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 ${
-                selectedFilter === 'movie'
-                  ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
-                  : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
-              }`}
-            >
-              Movies <span className="opacity-60 ml-1">({counts['movie'] || 0})</span>
-            </button>
-            <button
-              onClick={() => handleFilterChange('tv')}
-              className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 ${
-                selectedFilter === 'tv'
-                  ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
-                  : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
-              }`}
-            >
-              TV Series <span className="opacity-60 ml-1">({counts['tv'] || 0})</span>
-            </button>
-            <button
-              onClick={() => handleFilterChange('game')}
-              className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 ${
-                selectedFilter === 'game'
-                  ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
-                  : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
-              }`}
-            >
-              Games <span className="opacity-60 ml-1">({counts['game'] || 0})</span>
-            </button>
-            <button
-              onClick={() => handleFilterChange('news')}
-              className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 ${
-                selectedFilter === 'news'
-                  ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
-                  : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
-              }`}
-            >
-              Tech & News <span className="opacity-60 ml-1">({counts['news'] || 0})</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-space-sm self-start sm:self-auto">
-            <span className="font-label-code text-[10px] sm:text-[11px] text-secondary-fixed-dim bg-secondary-container/20 px-2 py-0.5 rounded-full border border-secondary-container/40">
-              GMT+8 PHT
-            </span>
-            <span className="font-label-caps text-label-caps text-outline uppercase tracking-wider hidden sm:inline">
-              Split Stream View
-            </span>
-            <div className="bg-dark-surface border border-dark-border p-1 rounded-lg hidden sm:flex items-center gap-1">
+        <div className="flex flex-col gap-space-sm pb-space-sm sm:pb-space-md border-b border-dark-border/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm sm:gap-space-md">
+            <div className="flex items-center gap-space-xs overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap pb-1 sm:pb-0 -mx-gutter px-gutter sm:mx-0 sm:px-0">
               <button
-                className="p-1 rounded bg-deep-dark text-secondary-fixed-dim"
-                title="Split Columns"
+                onClick={() => handleFilterChange('all')}
+                className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 cursor-pointer ${
+                  selectedFilter === 'all'
+                    ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
+                    : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
+                }`}
               >
-                <span className="material-symbols-outlined text-[18px]">view_column</span>
+                All <span className="opacity-75 ml-1">({items.length})</span>
+              </button>
+              <button
+                onClick={() => handleFilterChange('movie')}
+                className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 cursor-pointer ${
+                  selectedFilter === 'movie'
+                    ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
+                    : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
+                }`}
+              >
+                Movies <span className="opacity-60 ml-1">({counts['movie'] || 0})</span>
+              </button>
+              <button
+                onClick={() => handleFilterChange('tv')}
+                className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 cursor-pointer ${
+                  selectedFilter === 'tv'
+                    ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
+                    : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
+                }`}
+              >
+                TV Series <span className="opacity-60 ml-1">({counts['tv'] || 0})</span>
+              </button>
+              <button
+                onClick={() => handleFilterChange('game')}
+                className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 cursor-pointer ${
+                  selectedFilter === 'game'
+                    ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
+                    : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
+                }`}
+              >
+                Games <span className="opacity-60 ml-1">({counts['game'] || 0})</span>
+              </button>
+              <button
+                onClick={() => handleFilterChange('news')}
+                className={`px-3 sm:px-space-md py-1.5 sm:py-2 rounded-full font-label-code text-xs sm:text-label-code whitespace-nowrap transition-all flex-shrink-0 cursor-pointer ${
+                  selectedFilter === 'news'
+                    ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-md'
+                    : 'bg-dark-surface text-outline-variant hover:text-on-primary hover:bg-deep-dark border border-dark-border/40'
+                }`}
+              >
+                Tech & News <span className="opacity-60 ml-1">({counts['news'] || 0})</span>
               </button>
             </div>
+
+            <div className="flex items-center gap-space-sm self-start sm:self-auto">
+              <span className="font-label-code text-[10px] sm:text-[11px] text-secondary-fixed-dim bg-secondary-container/20 px-2 py-0.5 rounded-full border border-secondary-container/40">
+                GMT+8 PHT
+              </span>
+              <span className="font-label-caps text-label-caps text-outline uppercase tracking-wider hidden sm:inline">
+                Split Stream View
+              </span>
+            </div>
           </div>
+
+          {/* Source / Feed Filter Chips */}
+          {availableSources.length > 1 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 pb-1 -mx-gutter px-gutter sm:mx-0 sm:px-0">
+              <span className="font-label-code text-[11px] text-outline uppercase tracking-wider flex-shrink-0 mr-1 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">tune</span> Source:
+              </span>
+              <button
+                onClick={() => setSelectedSource('all')}
+                className={`px-2.5 py-1 rounded-lg font-label-code text-[11px] whitespace-nowrap transition-all flex-shrink-0 cursor-pointer ${
+                  selectedSource === 'all'
+                    ? 'bg-secondary-container/30 text-secondary-fixed-dim border border-secondary-container/60 font-semibold'
+                    : 'bg-dark-surface/60 text-outline hover:text-on-primary border border-dark-border/40'
+                }`}
+              >
+                All Sources
+              </button>
+              {availableSources.map(({ source, count }) => (
+                <button
+                  key={source}
+                  onClick={() => setSelectedSource(source)}
+                  className={`px-2.5 py-1 rounded-lg font-label-code text-[11px] whitespace-nowrap transition-all flex-shrink-0 cursor-pointer ${
+                    selectedSource === source
+                      ? 'bg-secondary-container/30 text-secondary-fixed-dim border border-secondary-container/60 font-semibold'
+                      : 'bg-dark-surface/60 text-outline hover:text-on-primary border border-dark-border/40'
+                  }`}
+                >
+                  {source.replace(/^rss:/, '')} <span className="opacity-60 ml-0.5">({count})</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

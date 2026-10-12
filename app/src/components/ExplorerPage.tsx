@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import type { Item } from '../lib/db';
 import { MonthlyCalendar } from './MonthlyCalendar';
 import { getPhtDateStr, getPhtDateOffset } from '../lib/timezone';
+import { matchItemSearch } from '../lib/search';
 
 interface ExplorerPageProps {
   items: Item[];
@@ -97,12 +98,8 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
         }
 
         // Search filter
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const matchTitle = item.title.toLowerCase().includes(q);
-          const matchTag = item.tags.some((t) => t.toLowerCase().includes(q));
-          const matchSource = item.source.toLowerCase().includes(q);
-          if (!matchTitle && !matchTag && !matchSource) return false;
+        if (searchQuery.trim() && !matchItemSearch(item, searchQuery)) {
+          return false;
         }
 
         // Release window filter - includes day before for 'this-week' to preserve yesterday releases
@@ -408,33 +405,40 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({
               {/* Data Source filter */}
               <div className="flex flex-col gap-space-xs">
                 <span className="font-label-caps text-label-caps uppercase text-outline tracking-wider">
-                  Data Source
+                  Data Source & Feeds
                 </span>
-                <div className="flex flex-col gap-1 pt-1">
+                <div className="flex flex-col gap-1 pt-1 max-h-56 overflow-y-auto no-scrollbar">
                   {[
                     { key: 'tmdb', label: 'TMDB (Movies/TV)', icon: 'theaters' },
                     { key: 'rawg', label: 'RAWG (Games)', icon: 'sports_esports' },
-                    { key: 'rss', label: 'RSS News', icon: 'feed' },
+                    { key: 'rss', label: 'All RSS News', icon: 'feed' },
+                    { key: 'rss:inquirer', label: 'Inquirer', icon: 'newspaper' },
+                    { key: 'rss:philstar', label: 'Philstar', icon: 'newspaper' },
+                    { key: 'rss:rappler', label: 'Rappler', icon: 'newspaper' },
+                    { key: 'rss:hackernews', label: 'Hacker News', icon: 'terminal' },
+                    { key: 'rss:theverge', label: 'The Verge', icon: 'devices' },
+                    { key: 'rss:arstechnica', label: 'Ars Technica', icon: 'memory' },
+                    { key: 'rss:techcrunch', label: 'TechCrunch', icon: 'rocket_launch' },
                   ].map((src) => {
                     const isChecked = selectedSources.includes(src.key);
                     return (
                       <button
                         key={src.key}
                         onClick={() => toggleSource(src.key)}
-                        className={`flex items-center justify-between p-2 rounded-lg text-body-sm transition-colors text-left ${
+                        className={`flex items-center justify-between p-2 rounded-lg text-body-sm transition-colors text-left cursor-pointer ${
                           isChecked
                             ? 'bg-secondary-container/20 text-secondary-fixed-dim font-medium'
                             : 'hover:bg-deep-dark text-on-primary'
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-[16px] text-outline">
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="material-symbols-outlined text-[16px] text-outline flex-shrink-0">
                             {src.icon}
                           </span>
-                          <span>{src.label}</span>
+                          <span className="truncate text-xs">{src.label}</span>
                         </div>
                         {isChecked && (
-                          <span className="material-symbols-outlined text-[16px] text-secondary-container">
+                          <span className="material-symbols-outlined text-[16px] text-secondary-container flex-shrink-0">
                             check
                           </span>
                         )}

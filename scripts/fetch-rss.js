@@ -101,10 +101,11 @@ async function fetchFeed(feed, upsertMany) {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const normalizedItems = rawItems
       .map((item) => normalizeItem(feed, item))
-      .filter((item) => !item.date || item.date >= thirtyDaysAgo);
+      .filter((item) => !item.date || item.date >= thirtyDaysAgo)
+      .slice(0, 15); // Strict cap of 15 items per feed to avoid single source domination
 
     upsertMany(normalizedItems);
-    console.log(`✓ [${feed.name}] Successfully fetched and upserted ${normalizedItems.length} items`);
+    console.log(`✓ [${feed.name}] Successfully fetched and upserted ${normalizedItems.length} items (capped at 15)`);
     return { feed: feed.name, count: normalizedItems.length };
   } catch (err) {
     console.warn(`⚠ [${feed.name}] Failed to fetch feed (${feed.url}): ${err.message}`);
